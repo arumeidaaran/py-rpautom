@@ -50,7 +50,7 @@ _webdriver_info = namedtuple(
         'plataforma',
         'versao',
         'nome_arquivo_zip',
-        'nome_arquivo_executavel',
+        'caminho_arquivo_executavel',
         'tamanho',
     ],
 )
@@ -298,7 +298,7 @@ def baixar_webdriver(
             'plataforma',
             'versao',
             'nome_arquivo_zip',
-            'nome_arquivo_executavel',
+            'caminho_arquivo_executavel',
             'tamanho',
         ],
     )
@@ -314,7 +314,7 @@ def baixar_webdriver(
     webdriver_info.plataforma = None
     webdriver_info.versao = None
     webdriver_info.nome_arquivo_zip = None
-    webdriver_info.nome_arquivo_executavel = None
+    webdriver_info.caminho_arquivo_executavel = None
     webdriver_info.tamanho = None
 
 
@@ -456,6 +456,39 @@ def baixar_webdriver(
         return url_webdriver
 
 
+    def coletar_caminho_executavel_webdriver(
+        caminho_webdriver: str,
+        versao_webdriver_local_sem_minor: str,
+        divisao_pastas: str,
+    ) -> str:
+        lista_executavel_webdriver_local = (
+            python_utils.retornar_arquivos_em_pasta(
+                caminho=caminho_webdriver,
+                filtro=(
+                    f'{versao_webdriver_local_sem_minor}*'
+                    f'{divisao_pastas}*.exe'
+                ),
+            )
+        )
+
+        caminho_arquivo_executavel = ''
+        if len(lista_executavel_webdriver_local) > 0:
+            caminho_arquivo_executavel = (
+                lista_executavel_webdriver_local[0]
+            )
+
+        return caminho_arquivo_executavel
+
+
+    def _coletar_caminho_webdriver_local(
+        lista_webdrivers_locais: list[str],
+    ) -> str:
+        lista_webdrivers_locais.sort()
+        caminho_webdriver_local = lista_webdrivers_locais[-1]
+
+        return caminho_webdriver_local
+
+
     def _coletar_versao_webdriver(executavel_webdriver: str) -> str:
         import subprocess
 
@@ -468,15 +501,6 @@ def baixar_webdriver(
         versao_webdriver = versao_webdriver.rpartition(' ')[-1]
 
         return versao_webdriver
-
-
-    def _coletar_caminho_webdriver_local(
-        lista_webdrivers_locais: list[str],
-    ) -> str:
-        lista_webdrivers_locais.sort()
-        caminho_webdriver_local = lista_webdrivers_locais[-1]
-
-        return caminho_webdriver_local
 
 
     def _coletar_versao_webdriver_local(
@@ -656,17 +680,8 @@ def baixar_webdriver(
         caminho=webdriver_info.caminho, filtro=f'{versao_navegador_sem_minor}*'
     )
 
-    validacao_download = None
-    if len(lista_webdrivers_locais) == 0:
-        '''
-        raise ValueError(
-            'Nenhum WebDriver foi encontrado no '
-            'diretório local. Certifique-se de que '
-            'os arquivos do WebDriver estão presentes no local esperado.'
-        )
-        # '''
-        validacao_download = True
-    else:
+    validacao_download = True
+    if len(lista_webdrivers_locais) > 0:
         caminho_webdriver_local = (
             _coletar_caminho_webdriver_local(
                 lista_webdrivers_locais=lista_webdrivers_locais,
@@ -695,26 +710,15 @@ def baixar_webdriver(
         )
 
         if versao_navegador_sem_minor == versao_webdriver_local_sem_minor:
-            caminho_base_webdriver = divisao_pastas.join(
-                (
-                    webdriver_info.caminho,
-                    versao_webdriver_local,
-                )
-            )
-            executavel_webdriver = python_utils.retornar_arquivos_em_pasta(
-                caminho=caminho_base_webdriver,
-                filtro='*.exe',
+            executavel_webdriver = coletar_caminho_executavel_webdriver(
+                caminho_webdriver = caminho_webdriver,
+                versao_webdriver_local_sem_minor = versao_webdriver_local_sem_minor,
+                divisao_pastas = divisao_pastas,
             )
 
-            if len(executavel_webdriver) == 0:
-                validacao_download = True
-            else:
-                webdriver_info.nome_arquivo_executavel = (
-                    executavel_webdriver[0]
-                )
+            if not executavel_webdriver == '':
                 validacao_download = False
-        else:
-            validacao_download = True
+                webdriver_info.caminho_arquivo_executavel = executavel_webdriver
 
     if validacao_download is True:
         header_request = {
@@ -835,22 +839,12 @@ def baixar_webdriver(
 
             contagem = contagem + 1
 
-        if webdriver_info.tamanho is not None:
-            validacao_caminho_arquivo_zip = 0
-            contagem = 0
-            while not (
-                validacao_caminho_arquivo_zip == webdriver_info.tamanho
-            ) and (contagem < 30):
-                validacao_caminho_arquivo_zip = str(
-                    python_utils.coletar_tamanho(arquivo_zip)
-                )
-
         python_utils.descompactar(
             arquivo=arquivo_zip,
             caminho_destino=caminho_arquivo_zip,
         )
 
-        webdriver_info.nome_arquivo_executavel = (
+        webdriver_info.caminho_arquivo_executavel = (
             python_utils.retornar_arquivos_em_pasta(
                 caminho=caminho_arquivo_zip,
                 filtro=f'**{divisao_pastas}*.exe',
@@ -991,7 +985,7 @@ def iniciar_navegador(
         plataforma = None,
         versao = None,
         nome_arquivo_zip = None,
-        nome_arquivo_executavel = None,
+        caminho_arquivo_executavel = None,
         tamanho = None,
     )
 
@@ -1012,7 +1006,7 @@ def iniciar_navegador(
 
     validacao_executavel = None
     if executavel is None:
-        executavel = webdriver_info.nome_arquivo_executavel
+        executavel = webdriver_info.caminho_arquivo_executavel
 
     if executavel is None:
         validacao_executavel = False
