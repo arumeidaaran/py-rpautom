@@ -907,6 +907,12 @@ def iniciar_navegador(
         return options_webdriver
 
 
+    def _definir_caminho_navegador(options_webdriver, caminho_navegador: str):
+        options_webdriver.binary_location = caminho_navegador
+
+        return options_webdriver
+
+
     def _instanciar_webdriver(
         service,
         webdriver_options=None,
@@ -989,13 +995,15 @@ def iniciar_navegador(
         tamanho = None,
     )
 
-    if baixar_webdriver_previamente is True:
-        if caminho_navegador is None:
-            caminho_navegador = _coletar_caminho_padrao_navegador(
-                nome_navegador = nome_navegador,
-            )
+    if caminho_navegador is None:
+        caminho_navegador = _coletar_caminho_padrao_navegador(
+            nome_navegador = nome_navegador,
+        )
 
-        versao_navegador = python_utils.coletar_versao_arquivo(caminho_navegador)
+    if baixar_webdriver_previamente is True:
+        versao_navegador = python_utils.coletar_versao_arquivo(
+            caminho_navegador
+        )
 
         webdriver_info = baixar_webdriver(
             nome_navegador=nome_navegador,
@@ -1032,6 +1040,11 @@ def iniciar_navegador(
         )
 
     options_webdriver = _retornar_webdriver_options(nome_navegador)
+    options_webdriver = _definir_caminho_navegador(
+        options_webdriver = options_webdriver,
+        caminho_navegador = caminho_navegador,
+    )
+
     options_webdriver = _adicionar_extras(
         options_webdriver=options_webdriver,
         argumento=options,
