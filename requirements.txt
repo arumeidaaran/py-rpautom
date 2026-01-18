@@ -10,3 +10,5 @@ Pytesseract
 requests
 selenium
 urllib3
+requests-html
+lxml_html_clean
