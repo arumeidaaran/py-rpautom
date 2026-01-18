@@ -24,7 +24,6 @@ setuptools.setup(
         'Framework :: Robot Framework :: Library',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Development Status :: 4 - Beta',
         'Topic :: Utilities',
     ],
