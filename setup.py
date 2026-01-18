@@ -40,5 +40,7 @@ setuptools.setup(
         'selenium',
         'urllib3',
         'xlrd',
+        'requests_html',
+        'lxml_html_clean',
     ],
 )
