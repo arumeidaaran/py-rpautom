@@ -9,7 +9,7 @@ with open(os.path.join(base_dir, 'README.md'), encoding='utf8') as f:
 
 setuptools.setup(
     name='py-rpautom',
-    version='0.0.54b0',
+    version='0.0.55b0',
     author='aranseiki',
     author_email='allanoa@5t2tj5.onmicrosoft.com',
     description='Conjunto de utilitários para automação de processos.',
