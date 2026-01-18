@@ -428,22 +428,43 @@ def baixar_webdriver(
     def _coletar_url_webdriver(
         nome_navegador: str,
         versao_navegador_sem_minor: str,
-    ) -> str:
+    ) -> tuple[str]:
         if nome_navegador.upper().__contains__('CHROME'):
             url_webdriver = (
                 'https://googlechromelabs.github.io/chrome-for-testing/'
                 'known-good-versions-with-downloads.json'
             )
+            header_request = {
+                'Accept': 'application/xml',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Cache-Control': 'max-age=0',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+            }
         elif nome_navegador.upper().__contains__('EDGE'):
             url_webdriver = (
                 'https://msedgewebdriverstorage.blob.core.windows.net/'
                 f'edgewebdriver?comp=list&prefix={versao_navegador_sem_minor}'
             )
+            header_request = {
+                'Accept': 'application/xml',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Cache-Control': 'max-age=0',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+            }
         elif nome_navegador.upper().__contains__('FIREFOX'):
-            url_webdriver = (
-                'https://github.com/mdn/content/blob/main/files/en-us/'
-                'glossary/gecko/index.md?plain=1'
-            )
+            url_webdriver = "https://api.github.com/repos/mozilla/geckodriver/releases"
+            header_request = {
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/vnd.github+json"
+            }
         else:
             raise SystemError(
                 (
@@ -453,7 +474,7 @@ def baixar_webdriver(
                 )
             )
 
-        return url_webdriver
+        return url_webdriver, header_request
 
 
     def coletar_caminho_executavel_webdriver(
@@ -560,6 +581,8 @@ def baixar_webdriver(
     def _tratar_lista_webdrivers(response_http_webdrivers):
         from json import loads
         from xml.etree.ElementTree import fromstring
+        from re import Match, search
+
 
         if nome_navegador.upper().__contains__('CHROME'):
             webdrivers_contents_json = loads(response_http_webdrivers.content)[
@@ -633,9 +656,35 @@ def baixar_webdriver(
                     item.text for item in root.findall(tag_tamanho_webdriver)
                 ]
         elif nome_navegador.upper().__contains__('FIREFOX'):
-            tag_nome_webdriver = ''
-            tag_url_webdriver = None
-            tag_tamanho_webdriver = None
+            webdrivers_contents_json = loads(response_http_webdrivers.content)
+
+            lista_url_webdrivers_json = [
+                item2['browser_download_url']
+                for item in webdrivers_contents_json
+                for item2 in item['assets']
+                if item2['browser_download_url'].__contains__('.zip')
+            ]
+
+            lista_url_webdrivers = []
+            for item in lista_url_webdrivers_json:
+                lista_url_webdrivers.append(item)
+
+            lista_nome_webdrivers = [
+                '/'.join(
+                    (
+                        item.split('/')[-3],
+                        item.split('/')[-1],
+                    )
+                ).replace('download/', '')
+                for item in lista_url_webdrivers
+            ]
+
+            lista_tamanho_webdrivers = [
+                item2['size']
+                for item in webdrivers_contents_json
+                for item2 in item['assets']
+                if item2['browser_download_url'].__contains__('.zip')
+            ]
         else:
             raise SystemError(
                 f' {nome_navegador} não disponível. Escolha uma dessas opções: Chrome, Edge, Firefox.'
@@ -659,7 +708,7 @@ def baixar_webdriver(
         [str(parte_versao) for parte_versao in map(int, versao_navegador)][:-1]
     )
 
-    webdriver_info.url = _coletar_url_webdriver(
+    webdriver_info.url, header_request = _coletar_url_webdriver(
         nome_navegador = nome_navegador,
         versao_navegador_sem_minor = versao_navegador_sem_minor
     )
@@ -721,17 +770,6 @@ def baixar_webdriver(
                 webdriver_info.caminho_arquivo_executavel = executavel_webdriver
 
     if validacao_download is True:
-        header_request = {
-            'Accept': 'application/xml',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Cache-Control': 'max-age=0',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1',
-        }
-
         response_http_webdrivers = _coletar_lista_webdrivers(
             webdriver_info=webdriver_info,
             header_arg=header_request,
@@ -761,17 +799,221 @@ def baixar_webdriver(
             )
 
         lista_webdrivers_compativeis = []
-        for dados_webdriver in lista_webdrivers:
-            if (
-                dados_webdriver[0]
-                .partition(divisao_pastas)[0]
-                .__contains__(versao_navegador_sem_minor)
-            ) and (
-                dados_webdriver[0]
-                .partition(divisao_pastas)[-1]
-                .__contains__(webdriver_info.plataforma)
-            ):
-                lista_webdrivers_compativeis.append(dados_webdriver)
+        if (
+            nome_navegador.upper().__contains__('CHROME') or
+            nome_navegador.upper().__contains__('EDGE')
+        ):
+            for dados_webdriver in lista_webdrivers:
+                if (
+                    dados_webdriver[0]
+                    .partition(divisao_pastas)[0]
+                    .__contains__(versao_navegador_sem_minor)
+                ) and (
+                    dados_webdriver[0]
+                    .partition(divisao_pastas)[-1]
+                    .__contains__(webdriver_info.plataforma)
+                ):
+                    lista_webdrivers_compativeis.append(dados_webdriver)
+        elif nome_navegador.upper().__contains__('FIREFOX'):
+            from re import sub, DOTALL, IGNORECASE
+            from requests_html import HTML
+            from os import environ
+
+            url_webdriver = (
+                'https://searchfox.org/firefox-main/'
+                'source/testing/geckodriver/doc/Support.md'
+            )
+
+            header_arg = {
+                'Accept': 'application/xml',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Cache-Control': 'max-age=0',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+            }
+
+            stream=True
+            environ['WDM_SSL_VERIFY'] = '1'
+            verificacao_ssl = (environ['WDM_SSL_VERIFY']).lower() in [
+                '1',
+                1,
+                'true',
+                True,
+            ]
+            autenticacao=None
+            tempo_limite=1
+            proxies=None
+
+            response_http_webdrivers = requisitar_url(
+                url=url_webdriver,
+                stream=stream,
+                verificacao_ssl=verificacao_ssl,
+                autenticacao=autenticacao,
+                header_arg=header_arg,
+                tempo_limite=tempo_limite,
+                proxies=proxies,
+            )
+
+            if not response_http_webdrivers.status_code in range(200, 300):
+                raise SystemError(
+                    f'Falha ao acessar a url {url_webdriver}. Revise os dados e tente novamente.'
+                )
+
+            html_string = response_http_webdrivers.content.decode() # type: ignore
+            html_string = html_string.replace('&lt;', '<')
+            html_string = sub(
+                r'<style[^>]*>.*?</style>',
+                '',
+                html_string,
+                flags=DOTALL | IGNORECASE
+            )
+            html_string = sub(
+                r'<code[^>]*class="source-line"[^>]*>',
+                '',
+                html_string,
+                flags=IGNORECASE
+            )
+            html_string = html_string.replace('</code>', '')
+            html_string = html_string.replace(
+                '<div role="cell"><div class="cov-strip cov-no-data"></div></div>',
+                ''
+            )
+            html_string = sub(
+                r'</div>\s*<div role="row" id="line-\d+"[^>]*class="source-line-with-number">',
+                '',
+                html_string,
+                flags=IGNORECASE
+            )
+            html_string = sub(
+                r'<div role="cell"><div class="blame-strip [^"]+"[^>]*data-blame="[^"]+"[^>]*aria-label="[^"]*hash[^"]*"[^>]*aria-expanded="false"></div></div>',
+                '',
+                html_string,
+                flags=IGNORECASE
+            )
+            html_string = html_string.replace(
+                '<div role="cell" class="line-number" data-line-number="18"></div>',
+                ''
+            )
+
+            html_string = sub(
+                r'<div role="cell" class="line-number" data-line-number="\d+"></div>',
+                '',
+                html_string,
+                flags=IGNORECASE
+            )
+            # Repara fechamento da tag <th> imediatamente
+            #   após seu conteúdo se tag de fechamento estiver faltando 
+            html_string = sub(
+                r'(<th\b[^>]*>)([^<\n\r]+)(?=(?:\s*<(?:th|td|tr|/tr|/thead|/tbody|/table)))',
+                r'\1\2</th>',
+                html_string,
+                flags=IGNORECASE
+            )
+
+            # Repara fechamento da tag <td> imediatamente após seu
+            #   conteúdo se tag de fechamento estiver faltando 
+            html_string = sub(
+                r'(<td\b[^>]*>)([^<\n\r]+)(?=(?:\s*<(?:td|th|tr|/tr|/tbody|/table)))',
+                r'\1\2</td>',
+                html_string,
+                flags=IGNORECASE
+            )
+
+            # Repara fechamento da tag <tr> imediatamente após seu conteúdo
+            #   se tag de fechamento estiver faltando 
+            html_string = sub(
+                r'(<tr\b[^>]*>.*?(?:</td>|</th>))(?!\s*</tr>)(?=\s*<(?:tr|/tbody|/thead|/table|$))',
+                r'\1</tr>',
+                html_string,
+                flags=IGNORECASE | DOTALL
+            )
+
+            # Fecha todas as tags de células abertas únicas restantes que são
+            #   seguidas por uma nova linha/espaço em branco e, em seguida,
+            #   uma nova linha/tabela
+            html_string = sub(
+                r'(<(th|td)\b[^>]*>)([^<\n\r]+)(?=\s*(?:</thead>|</tbody>|</table>))',
+                r'\1\3</\2>',
+                html_string,
+                flags=IGNORECASE
+            )
+
+            html_string = sub(
+                r'\n\s.\n?',
+                '',
+                html_string,
+                flags=DOTALL
+            )
+            html_string = sub(r'\s*\n\s*', '', html_string)
+
+            root = HTML(html=html_string)
+            tabela_webdrivers = root.find('table')
+            tabela_webdrivers = tabela_webdrivers[0]
+
+            total_versoes = tabela_webdrivers.xpath('//table/tr').__len__() 
+            if total_versoes == 0:
+                raise RuntimeError(
+                    'Não encontrado versões para o navegador Firefox'
+                )
+
+            versoes_webdriver_firefox = []
+            versoes_min_navegador_firefox = []
+            versoes_max_navegador_firefox = []
+            for linha_versao in range(1, total_versoes+1):
+                versoes_webdriver_firefox.append(
+                    tabela_webdrivers.xpath(
+                        f'((//table//tr)[{linha_versao}]/following::td)[1]'
+                    )[0].text
+                )
+
+                versoes_min_navegador_firefox.append(
+                    tabela_webdrivers.xpath(
+                        f'((//table//tr)[{linha_versao}]/following::td)[3]'
+                    )[0].text
+                )
+
+                versoes_max_navegador_firefox.append(
+                    tabela_webdrivers.xpath(
+                        f'((//table//tr)[{linha_versao}]/following::td)[4]'
+                    )[0].text
+                )
+
+            versao_maxima = max(
+                [
+                    int(item)
+                    for item in versoes_max_navegador_firefox
+                    if item.isdigit()
+                ]
+            )
+
+            versoes_max_navegador_firefox = [
+                versao_maxima if not str(item).isdigit() else item
+                for item in versoes_max_navegador_firefox
+            ]
+
+            indice_versao_correspondente = 0
+            for item in versoes_max_navegador_firefox:
+                if int(versao_navegador_sem_minor.partition('.')[0]) > int(item):
+                    break
+                indice_versao_correspondente = indice_versao_correspondente + 1
+
+            versao_correspondente = versoes_webdriver_firefox[indice_versao_correspondente]
+
+            for dados_webdriver in lista_webdrivers:
+                if (
+                    dados_webdriver[0].__contains__(versao_correspondente)
+                ) and (
+                    dados_webdriver[0].__contains__(webdriver_info.plataforma)
+                ):
+                    lista_webdrivers_compativeis.append(dados_webdriver)
+        else:
+            raise SystemError(
+                f' {nome_navegador} não disponível. Escolha uma dessas opções: Chrome, Edge, Firefox.'
+            )
+
 
         if lista_webdrivers_compativeis == []:
             versao_navegador = '.'.join(
@@ -783,15 +1025,32 @@ def baixar_webdriver(
                 f'{versao_navegador} está disponível no momento.'
             )
 
-        ultimo_webdriver = lista_webdrivers_compativeis[-1]
-        webdriver_info.nome_arquivo_zip = ultimo_webdriver[
-            0
-        ].partition(divisao_pastas)[-1]
-        webdriver_info.versao = ultimo_webdriver[
-            0
-        ].partition(divisao_pastas)[0]
-        webdriver_info.tamanho = ultimo_webdriver[2]
-        url_arquivo_zip = ultimo_webdriver[1]
+        if (
+            nome_navegador.upper().__contains__('CHROME')
+            or nome_navegador.upper().__contains__('EDGE')
+        ):
+            ultimo_webdriver = lista_webdrivers_compativeis[0]
+            webdriver_info.nome_arquivo_zip = ultimo_webdriver[0]
+            webdriver_info.versao = ultimo_webdriver[
+                0
+            ].partition(divisao_pastas)[0]
+            webdriver_info.tamanho = ultimo_webdriver[2]
+            url_arquivo_zip = ultimo_webdriver[1]
+        elif nome_navegador.upper().__contains__('FIREFOX'):
+            from re import search
+            ultimo_webdriver = lista_webdrivers_compativeis[0]
+            webdriver_info.nome_arquivo_zip = ultimo_webdriver[0]
+            webdriver_info.versao = search(
+                '(v)[0-9].*-',
+                webdriver_info.nome_arquivo_zip
+            )[0].replace('v', '').replace('-', '')
+            webdriver_info.tamanho = ultimo_webdriver[2]
+            url_arquivo_zip = ultimo_webdriver[1]
+        else:
+            raise SystemError(
+                f' {nome_navegador} não disponível. Escolha uma dessas opções: Chrome, Edge, Firefox.'
+            )
+
 
         caminho_arquivo_zip = divisao_pastas.join(
             (
@@ -803,7 +1062,9 @@ def baixar_webdriver(
         arquivo_zip = divisao_pastas.join(
             (
                 caminho_arquivo_zip,
-                webdriver_info.nome_arquivo_zip,
+                webdriver_info.nome_arquivo_zip.replace(
+                    f'{webdriver_info.versao}/', ''
+                ),
             )
         )
 
