@@ -1,6 +1,3 @@
-# Requirements de produção
--r requirements.txt
-
 # Requirements de desenvolvimento
 blue
 build
@@ -8,6 +5,7 @@ isort
 prospector
 twine
 wheel
+setuptools
 
 # Requirements de testes
 Pytest
@@ -21,3 +19,6 @@ pymdown-extensions
 mkdocs-custommill
 mkdocs-windmill-dark
 jinja2
+
+# Requirements de produção
+-r requirements.txt
