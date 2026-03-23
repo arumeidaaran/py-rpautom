@@ -770,39 +770,39 @@ def baixar_webdriver(
                 webdriver_info.caminho_arquivo_executavel = executavel_webdriver
 
     if validacao_download is True:
-        response_http_webdrivers = _coletar_lista_webdrivers(
-            webdriver_info=webdriver_info,
-            header_arg=header_request,
-            proxies=proxies,
-            autenticacao=autenticacao,
-        )
-
-        if response_http_webdrivers.content is None \
-        or response_http_webdrivers.content == '':
-            raise ValueError(
-                (
-                    'Não foi possível obter a lista de versões '
-                    'disponíveis do WebDriver. O conteúdo retornado '
-                    'pelo servidor está vazio ou inválido.'
-                )
-            )
-
-        lista_webdrivers = _tratar_lista_webdrivers(
-            response_http_webdrivers
-        )
-        if len(lista_webdrivers) == 0:
-            raise SystemError(
-                (
-                    'Não foi possível coletar as informações do '
-                    'webdriver online, verifique sua conexão de rede.'
-                )
-            )
-
         lista_webdrivers_compativeis = []
         if (
             nome_navegador.upper().__contains__('CHROME') or
             nome_navegador.upper().__contains__('EDGE')
         ):
+            response_http_webdrivers = _coletar_lista_webdrivers(
+                webdriver_info=webdriver_info,
+                header_arg=header_request,
+                proxies=proxies,
+                autenticacao=autenticacao,
+            )
+
+            if response_http_webdrivers.content is None \
+            or response_http_webdrivers.content == '':
+                raise ValueError(
+                    (
+                        'Não foi possível obter a lista de versões '
+                        'disponíveis do WebDriver. O conteúdo retornado '
+                        'pelo servidor está vazio ou inválido.'
+                    )
+                )
+
+            lista_webdrivers = _tratar_lista_webdrivers(
+                response_http_webdrivers
+            )
+            if len(lista_webdrivers) == 0:
+                raise SystemError(
+                    (
+                        'Não foi possível coletar as informações do '
+                        'webdriver online, verifique sua conexão de rede.'
+                    )
+                )
+
             for dados_webdriver in lista_webdrivers:
                 if (
                     dados_webdriver[0]
@@ -958,57 +958,88 @@ def baixar_webdriver(
                 raise RuntimeError(
                     'Não encontrado versões para o navegador Firefox'
                 )
+            # Extrai a versão mais recente do geckodriver compatível com o
+            # Firefox local a partir da tabela de suporte (Support.md).
+            from re import search
 
-            versoes_webdriver_firefox = []
-            versoes_min_navegador_firefox = []
-            versoes_max_navegador_firefox = []
-            for linha_versao in range(1, total_versoes+1):
-                versoes_webdriver_firefox.append(
-                    tabela_webdrivers.xpath(
-                        f'((//table//tr)[{linha_versao}]/following::td)[1]'
-                    )[0].text
-                )
-
-                versoes_min_navegador_firefox.append(
-                    tabela_webdrivers.xpath(
-                        f'((//table//tr)[{linha_versao}]/following::td)[3]'
-                    )[0].text
-                )
-
-                versoes_max_navegador_firefox.append(
-                    tabela_webdrivers.xpath(
-                        f'((//table//tr)[{linha_versao}]/following::td)[4]'
-                    )[0].text
-                )
-
-            versao_maxima = max(
-                [
-                    int(item)
-                    for item in versoes_max_navegador_firefox
-                    if item.isdigit()
-                ]
+            versao_firefox_major = int(
+                str(versao_navegador_sem_minor).partition('.')[0]
             )
 
-            versoes_max_navegador_firefox = [
-                versao_maxima if not str(item).isdigit() else item
-                for item in versoes_max_navegador_firefox
+            def _parse_major_firefox(valor: str, default: int) -> int:
+                texto = str(valor or '').lower()
+                if 'n/a' in texto:
+                    return default
+                match = search(r'(?<![\d.])(\d{2,3})(?![\d.])', texto)
+                if match is None:
+                    return default
+                return int(match.group(1))
+
+            # A HTML retornada pelo Searchfox nem sempre forma uma tabela
+            # "limpa" (TR/TD). Coletamos o texto em ordem e inferimos os blocos:
+            #   geckodriver, python, min_firefox, max_firefox
+            tokens = [
+                str(item).strip()
+                for item in tabela_webdrivers.xpath('.//text()')
+                if str(item).strip() != ''
             ]
 
-            indice_versao_correspondente = 0
-            for item in versoes_max_navegador_firefox:
-                if int(versao_navegador_sem_minor.partition('.')[0]) > int(item):
-                    break
-                indice_versao_correspondente = indice_versao_correspondente + 1
+            mapeamento = []
+            versoes_vistas = set()
+            for idx in range(0, len(tokens) - 3):
+                match_gecko = search(
+                    r'(?<!\d)(\d+\.\d+\.\d+)(?!\d)',
+                    tokens[idx]
+                )
+                if match_gecko is None:
+                    continue
 
-            versao_correspondente = versoes_webdriver_firefox[indice_versao_correspondente]
+                gecko_versao = match_gecko.group(1)
+                if gecko_versao in versoes_vistas:
+                    continue
 
-            for dados_webdriver in lista_webdrivers:
+                min_texto = tokens[idx + 2]
+                max_texto = tokens[idx + 3]
+                min_major = _parse_major_firefox(min_texto, default=0)
+                max_major = _parse_major_firefox(max_texto, default=9999)
+
+                mapeamento.append((gecko_versao, min_major, max_major))
+                versoes_vistas.add(gecko_versao)
+
+            if len(mapeamento) == 0:
+                raise RuntimeError(
+                    'Não encontrado versões para o webdriver do Firefox'
+                )
+
+            # A tabela normalmente vem ordenada do mais novo para o mais antigo,
+            # então o primeiro match já é a versão mais recente compatível.
+            versao_correspondente = None
+            for gecko_versao, min_major, max_major in mapeamento:
                 if (
-                    dados_webdriver[0].__contains__(versao_correspondente)
-                ) and (
-                    dados_webdriver[0].__contains__(webdriver_info.plataforma)
+                    versao_firefox_major >= min_major
+                    and versao_firefox_major <= max_major
                 ):
-                    lista_webdrivers_compativeis.append(dados_webdriver)
+                    versao_correspondente = gecko_versao
+                    break
+
+            if versao_correspondente is None:
+                # Firefox mais novo do que a tabela cobre: use o mais recente.
+                maior_max = max([item[2] for item in mapeamento])
+                if versao_firefox_major > maior_max:
+                    versao_correspondente = mapeamento[0][0]
+                else:
+                    versao_correspondente = mapeamento[-1][0]
+
+            nome_arquivo_zip = (
+                f'geckodriver-v{versao_correspondente}-{webdriver_info.plataforma}.zip'
+            )
+            url_arquivo_zip = (
+                'https://github.com/mozilla/geckodriver/releases/download/'
+                f'v{versao_correspondente}/{nome_arquivo_zip}'
+            )
+            lista_webdrivers_compativeis.append(
+                (nome_arquivo_zip, url_arquivo_zip, 0)
+            )
         else:
             raise SystemError(
                 f' {nome_navegador} não disponível. Escolha uma dessas opções: Chrome, Edge, Firefox.'
