@@ -385,10 +385,16 @@ def coletar_idioma_so():
 def coletar_versao_so():
     """Coleta a versao do sistema operacional."""
     # importa recursos do módulo sys
-    from sys import platform
+    from platform import machine, release, system, version
 
-    # retorna o valor de idioma coletado
-    return platform
+    versao_so = {
+        "sistema": system(),
+        "release": release(),
+        "version": version(),
+        "machine": machine()
+    }
+
+    return versao_so
 
 
 def coletar_nome_arquivo(caminho):
