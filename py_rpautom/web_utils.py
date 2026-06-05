@@ -619,17 +619,22 @@ def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
         )
 
 
-def executar_script(script, args=''):
+def executar_script(script, args='', assincrono=False):
     """Executa um script Javascript na página automatizada."""
     try:
-        if not args == '':
-            _navegador.execute_script(script, args)
-        else:
-            _navegador.execute_script(script)
+        _executar_script = _navegador.execute_script
+        if assincrono:
+            _executar_script = _navegador.execute_async_script
 
-        return True
-    except:
-        return False
+        retultado_executar_script = ''
+        if not args == '':
+            retultado_executar_script = _executar_script(script, args)
+        else:
+            retultado_executar_script = _executar_script(script)
+    except Exception as erro:
+        raise erro
+
+    return retultado_executar_script
 
 
 def retornar_codigo_fonte():
