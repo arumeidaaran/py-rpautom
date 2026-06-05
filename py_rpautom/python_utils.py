@@ -6,7 +6,6 @@ __all__ = [
     'abrir_arquivo_excel',
     'abrir_arquivo_pdf',
     'abrir_arquivo_texto',
-    'abrir_arquivo_word',
     'adicionar_ao_zip',
     'alterar_arquivo_texto',
     'caminho_existente',
@@ -53,7 +52,7 @@ from typing import Union
 
 def abrir_arquivo_em_bytes(caminho):
     """Abre em bytes um arquivo de texto no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # abre um arquivo de texto e coleta o conteúdo em bytes
@@ -71,7 +70,7 @@ def abrir_arquivo_excel(
 ):
     """Abre um arquivo de Excel no caminho informado."""
 
-    # importa recursos do módulo openpyxl
+    # Importa recursos do módulo openpyxl
     import xlrd  # type: ignore
     from openpyxl import load_workbook
 
@@ -137,7 +136,7 @@ def abrir_arquivo_pdf(
 ):
     """Abre um arquivo de word no caminho informado."""
 
-    # importa recursos do módulo PyPDF2
+    # Importa recursos do módulo PyPDF2
     from PyPDF2 import PdfReader
 
     # trata o caminho com o objeto Path
@@ -195,7 +194,7 @@ def abrir_arquivo_pdf(
 
 def abrir_arquivo_texto(caminho, encoding='utf8'):
     """Abre um arquivo de texto no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # abre um arquivo de texto e coleta o conteúdo
@@ -211,7 +210,7 @@ def adicionar_ao_zip(
     recursivo: bool = False,
 ):
     """Adiciona um caminho à um arquivo zip informado."""
-    # importa recursos do módulo zipfile
+    # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
     if recursivo is True:
@@ -248,7 +247,7 @@ def alterar_arquivo_texto(
     encoding_saida='utf8',
 ):
     """Abre um arquivo de texto no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # trata o caminho com o objeto Path
@@ -296,7 +295,7 @@ def alterar_arquivo_texto(
 
 def caminho_existente(caminho):
     """Verifica se um arquivo no caminho informado existe."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta o caminho absoluto do caminho informado
@@ -317,7 +316,7 @@ def cls():
 def coletar_arvore_caminho(caminho):
     """Retorna os arquivos existentes em um diretório se seus
     respectivos sub-diretórios segundo o caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta o caminho informado no padrão do objeto Path
@@ -336,7 +335,7 @@ def coletar_arvore_caminho(caminho):
 def coletar_caminho_absoluto(caminho):
     """Retorna os arquivos existentes em um diretório se seus
     respectivos sub-diretórios segundo o caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta o caminho informado no padrão do objeto Path
@@ -351,7 +350,7 @@ def coletar_caminho_absoluto(caminho):
 
 def coletar_extensao_arquivo(caminho):
     """Coleta a extensão de um arquivo no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta a extensão do arquivo
@@ -363,10 +362,10 @@ def coletar_extensao_arquivo(caminho):
 
 def coletar_idioma_so():
     """Coleta o idioma atual do sistema operacional."""
-    # importa recursos do módulo ctypes
+    # Importa recursos do módulo ctypes
     import ctypes
 
-    # importa recursos do módulo locale
+    # Importa recursos do módulo locale
     import locale
 
     # coleta as informações do kernel do Windows
@@ -384,7 +383,7 @@ def coletar_idioma_so():
 
 def coletar_versao_so():
     """Coleta a versao do sistema operacional."""
-    # importa recursos do módulo sys
+    # Importa recursos do módulo sys
     from platform import machine, release, system, version
 
     versao_so = {
@@ -399,7 +398,7 @@ def coletar_versao_so():
 
 def coletar_nome_arquivo(caminho):
     """Coleta o nome de um arquivo no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta o nome do arquivo informado
@@ -412,7 +411,7 @@ def coletar_nome_arquivo(caminho):
 def coletar_nome_guias_arquivo_excel(arquivo_excel):
     """Coleta as guias existentes no arquivo Excel informado."""
 
-    # importa recursos do módulo openpyxl
+    # Importa recursos do módulo openpyxl
     from openpyxl import load_workbook
 
     # trata o caminho com o objeto Path
@@ -433,7 +432,7 @@ def coletar_nome_guias_arquivo_excel(arquivo_excel):
 
 def coletar_pid(nome_processo):
     """Coleta o idioma atual do sistema operacional."""
-    # importa recursos do módulo os
+    # Importa recursos do módulo os
     import psutil
 
     # instancia uma lista vazia
@@ -557,7 +556,7 @@ def compactar(
     modo: str = 'w',
 ):
     """Compacta um caminho para o arquivo zip informado."""
-    # importa recursos do módulo zipfile
+    # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
     lista_caminhos = retornar_arquivos_em_pasta(
@@ -584,10 +583,10 @@ def converter_pdf_em_imagem(
     orientacao: int = 0,
 ):
     """Converte cada página de um arquivo PDF em imagem."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
-    # importa recursos do módulo fitz
+    # Importa recursos do módulo fitz
     import fitz
 
     try:
@@ -634,7 +633,7 @@ def copiar_arquivo(arquivo, caminho_destino):
     # coleta o caminho absoluto do arquivo
     arquivo = coletar_caminho_absoluto(arquivo)
 
-    # importa recursos do módulo shutil
+    # Importa recursos do módulo shutil
     from shutil import copy2
 
     # copia o arquivo para a pasta de destino informado
@@ -647,10 +646,10 @@ def copiar_arquivo(arquivo, caminho_destino):
 def copiar_pasta(pasta: str, caminho_destino: str):
     """Copia uma pasta de um caminho para outro caminho conforme informado."""
 
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
-    # importa recursos do módulo shutil
+    # Importa recursos do módulo shutil
     from shutil import copytree
 
     # trata o caminho de destino com o objeto Path
@@ -675,7 +674,7 @@ def criar_arquivo_texto(
     encoding='utf8',
     em_bytes: bool = False,
 ):
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     """Cria um arquivo de texto no caminho informado."""
     from pathlib import Path
 
@@ -694,7 +693,7 @@ def criar_arquivo_texto(
 
 def criar_pasta(caminho):
     """Cria pasta com caminho e nome informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # trata o caminho com o objeto Path
@@ -710,7 +709,7 @@ def criar_pasta(caminho):
 
 def descompactar(arquivo, caminho_destino, senha_arquivo=None):
     """Descompacta um arquivo para o caminho informado."""
-    # importa recursos do módulo zipfile
+    # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
     with ZipFile(file=arquivo, mode='r') as objeto_zip:
@@ -750,7 +749,7 @@ def escrever_em_arquivo(
 
 def excluir_arquivo(caminho):
     """Exclui um arquivo no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     caminho = coletar_caminho_absoluto(caminho)
@@ -770,7 +769,7 @@ def excluir_pasta(caminho, vazia: bool = True):
 
     # Se a pasta estiver vazia
     if vazia is True:
-        # importa recursos do módulo Path
+        # Importa recursos do módulo Path
         from pathlib import Path
 
         # exclui a pasta informada
@@ -780,7 +779,7 @@ def excluir_pasta(caminho, vazia: bool = True):
         return True
     # Se a pasta não estiver vazia
     else:
-        # importa recursos do módulo rmtree
+        # Importa recursos do módulo rmtree
         from shutil import rmtree
 
         # exclui a pasta informada e o conteúdo contido nela
@@ -792,7 +791,7 @@ def excluir_pasta(caminho, vazia: bool = True):
 
 def extrair_texto_ocr(arquivo, linguagem, encoding='utf8'):
     """Extrai texto de arquivo de imagem usando OCR."""
-    # importa recursos do módulo subprocess
+    # Importa recursos do módulo subprocess
     import subprocess
 
     # abre um arquivo de texto e coleta o conteúdo em bytes
@@ -811,7 +810,7 @@ def extrair_texto_ocr(arquivo, linguagem, encoding='utf8'):
 
 def finalizar_processo(pid: int):
     """Coleta o idioma atual do sistema operacional."""
-    # importa recursos do módulo os
+    # Importa recursos do módulo os
     import psutil
 
     # instancia um dicionário vazio
@@ -874,7 +873,7 @@ def gravar_log_em_arquivo(
 
 def janela_dialogo(titulo: str, texto: str, estilo: int = 1):
     """Exibe uma janela de mensagem na tela."""
-    # importa recursos do módulo ctypes
+    # Importa recursos do módulo ctypes
     import ctypes
 
     # cria o objeto de janela conforme os parâmentros informados
@@ -893,10 +892,10 @@ def ler_variavel_ambiente(
 ):
     """Lê uma variável de ambiente,
     tanto de um arquivo quanto direto do sistema."""
-    # importa recursos do módulo os
+    # Importa recursos do módulo os
     import os
 
-    # importa recursos do módulo ConfigParser
+    # Importa recursos do módulo ConfigParser
     from configparser import ConfigParser
 
     # se não for variável de sistema
@@ -934,7 +933,7 @@ def logar(
 ):
     """Formata e retorna uma string como log.
     Será exibido sempre o ní­vel em primeira posição."""
-    # importa recursos do módulo logging
+    # Importa recursos do módulo logging
     from logging import (
         CRITICAL,
         DEBUG,
@@ -984,7 +983,7 @@ def logar(
 
 def pasta_esta_vazia(caminho):
     """Verifica se uma pasta no caminho informado está vazia."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     caminho = coletar_caminho_absoluto(caminho)
@@ -1007,7 +1006,7 @@ def pasta_esta_vazia(caminho):
 
 def processo_existente(nome_processo):
     """Coleta o idioma atual do sistema operacional."""
-    # importa recursos do módulo psutil
+    # Importa recursos do módulo psutil
     import psutil
 
     # para cada processo na lista de processos
@@ -1033,7 +1032,7 @@ def processo_existente(nome_processo):
 def recortar(caminho_atual, caminho_novo):
     """Recorta um arquivo ou pasta de um caminho
     e cola em outro caminho conforme informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
     from shutil import move
 
@@ -1054,8 +1053,8 @@ def remover_acentos(
     normalizacao='NFKD',
 ):
     """Cria pasta com caminho e nome informado."""
-    # importa recursos do módulo unicodedata
-    # importa recursos do módulo re
+    # Importa recursos do módulo unicodedata
+    # Importa recursos do módulo re
     import re
     import unicodedata
 
@@ -1086,7 +1085,7 @@ def remover_acentos(
 
 def renomear(caminho, nome_atual, novo_nome):
     """Renomeia o nome de um arquivo no caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from os import rename
     from pathlib import Path
 
@@ -1106,7 +1105,7 @@ def renomear(caminho, nome_atual, novo_nome):
 def retornar_arquivos_em_pasta(caminho, filtro='**/*'):
     """Retorna os arquivos existentes em um diretório se seus
     respectivos sub-diretórios segundo o caminho informado."""
-    # importa recursos do módulo Path
+    # Importa recursos do módulo Path
     from pathlib import Path
 
     # coleta de forma recursiva o conteúdo
@@ -1128,7 +1127,7 @@ def retornar_arquivos_em_pasta(caminho, filtro='**/*'):
 def retornar_data_hora_atual(parametro):
     """Formata e retorna dados de data e/ou hora,
     conforme informado pelo parâmetro."""
-    # importa recursos do módulo datetime
+    # Importa recursos do módulo datetime
     import datetime
 
     # retorna dados de data e/ou hora conforme informado pelo parâmetro.
