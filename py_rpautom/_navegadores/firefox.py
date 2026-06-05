@@ -150,6 +150,12 @@ def _coletar_metadata_requisicao_geckodriver(
     return metadata
 
 
+def _configuracao_silenciosa_firefox() -> None:
+    options_webdriver_local = None
+
+    return options_webdriver_local
+
+
 def _tratar_lista_geckodriver(
     response_http_webdrivers: Response
 ) -> list[str]:

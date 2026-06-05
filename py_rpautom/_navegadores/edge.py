@@ -81,6 +81,20 @@ def _coletar_metadata_requisicao_edgedriver(
     return metadata
 
 
+def _configuracao_silenciosa_edge() -> tuple[
+    tuple[str, ...],
+    tuple[str, ...],
+]:
+    argumentos_silenciosos = (
+        '--disable-background-networking',
+        '--disable-logging',
+        '--log-level=3',
+    )
+    exclude_switches = ('enable-logging',)
+
+    return argumentos_silenciosos, exclude_switches
+
+
 def _tratar_lista_edgedriver(
     response_http_webdrivers: Response
 ) -> list[tuple[str, str, str]]:

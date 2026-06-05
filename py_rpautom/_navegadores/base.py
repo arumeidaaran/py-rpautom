@@ -6,16 +6,19 @@ from py_rpautom._navegadores.chrome import (
     _coletar_metadata_chromedriver,
     _coletar_metadata_requisicao_chromedriver,
     _coletar_nome_webdriver_chrome,
+    _configuracao_silenciosa_chrome,
 )
 from py_rpautom._navegadores.edge import (
     _coletar_metadata_edgedriver,
     _coletar_metadata_requisicao_edgedriver,
     _coletar_nome_webdriver_edge,
+    _configuracao_silenciosa_edge,
 )
 from py_rpautom._navegadores.firefox import (
     _coletar_metadata_geckodriver,
     _coletar_metadata_requisicao_geckodriver,
     _coletar_nome_webdriver_firefox,
+    _configuracao_silenciosa_firefox,
 )
 from py_rpautom import python_utils
 from requests import Response
@@ -41,6 +44,22 @@ _webdriver_info = namedtuple(
         'tamanho',
     ],
 )
+
+
+def _adicionar_argumentos_padrao(
+    argumento: Union[tuple[str, ...], None],
+    argumentos_padrao: tuple[str, ...],
+) -> tuple[str, ...]:
+    argumento = tuple(argumento or ())
+    nomes_argumentos = [item.partition('=')[0] for item in argumento]
+
+    for item in argumentos_padrao:
+        nome_argumento = item.partition('=')[0]
+        if nome_argumento not in nomes_argumentos:
+            argumento = argumento + (item,)
+            nomes_argumentos.append(nome_argumento)
+
+    return argumento
 
 
 def _aguardar_elemento_shadowroot(
@@ -91,6 +110,86 @@ def _buscar_elemento_shadowroot(
         return False
 
 
+def _normalizar_exclude_switches(valor_experimento) -> list[str]:
+    if valor_experimento is None:
+        return []
+
+    if isinstance(valor_experimento, str):
+        return [valor_experimento]
+
+    return list(valor_experimento)
+
+
+def _adicionar_exclude_switches(
+    argumento_experimental: Union[tuple[tuple[str, object], ...], None],
+    exclude_switches_padrao: tuple[str, ...],
+) -> tuple[tuple[str, object], ...]:
+    experimentos = dict(argumento_experimental or ())
+    exclude_switches = _normalizar_exclude_switches(
+        experimentos.get('excludeSwitches')
+    )
+
+    for item in exclude_switches_padrao:
+        if item not in exclude_switches:
+            exclude_switches.append(item)
+
+    experimentos['excludeSwitches'] = exclude_switches
+
+    return tuple(experimentos.items())
+
+
+def _adicionar_configuracao_silenciosa(
+    options_webdriver,
+    argumento: Union[tuple[str, ...], None],
+    argumento_experimental: Union[tuple[tuple[str, object], ...], None],
+) -> tuple[
+    tuple[str, ...],
+    tuple[tuple[str, object], ...],
+    object,
+]:
+    nome_navegador = str(
+        options_webdriver.capabilities.get('browserName', '')
+    ).upper()
+
+    argumento_local = tuple(argumento or ())
+    argumento_experimental_local = tuple(argumento_experimental or ())
+    options_webdriver_local = options_webdriver
+
+    if nome_navegador.__contains__('EDGE'):
+        argumentos_padrao, exclude_switches_padrao = (
+            _configuracao_silenciosa_edge()
+        )
+        argumento_local = _adicionar_argumentos_padrao(
+            argumento,
+            argumentos_padrao,
+        )
+        argumento_experimental_local = _adicionar_exclude_switches(
+            argumento_experimental,
+            exclude_switches_padrao,
+        )
+    elif nome_navegador.__contains__('CHROME'):
+        argumentos_padrao, exclude_switches_padrao = (
+            _configuracao_silenciosa_chrome()
+        )
+        argumento_local = _adicionar_argumentos_padrao(
+            argumento,
+            argumentos_padrao,
+        )
+        argumento_experimental_local = _adicionar_exclude_switches(
+            argumento_experimental,
+            exclude_switches_padrao,
+        )
+    elif nome_navegador.__contains__('FIREFOX'):
+        options_webdriver.log.level = _configuracao_silenciosa_firefox()
+        options_webdriver_local = options_webdriver
+
+    return (
+        argumento_local,
+        argumento_experimental_local,
+        options_webdriver_local,
+    )
+
+
 def _adicionar_extras(
     options_webdriver,
     argumento,
@@ -98,6 +197,16 @@ def _adicionar_extras(
     argumento_experimental,
     capacidade,
 ):
+    (
+        argumento,
+        argumento_experimental,
+        options_webdriver,
+    ) = _adicionar_configuracao_silenciosa(
+        options_webdriver,
+        argumento,
+        argumento_experimental,
+    )
+
     if argumento is not None and len(argumento) > 0:
         for item in argumento:
             options_webdriver.add_argument(item)
@@ -709,6 +818,8 @@ def _retornar_service(
     nome_navegador,
     porta_webdriver,
 ):
+    from subprocess import DEVNULL
+
     if nome_navegador.upper().__contains__('CHROME'):
         from selenium.webdriver.chrome.service import Service
     elif nome_navegador.upper().__contains__('EDGE'):
@@ -728,6 +839,7 @@ def _retornar_service(
     service = Service(
         executable_path=executavel,
         port=porta_webdriver,
+        log_output=DEVNULL,
     )
 
     return service
