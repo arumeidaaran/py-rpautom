@@ -33,6 +33,7 @@ __all__ = [
     'clicar_elemento',
     'coletar_atributo',
     'coletar_id_janela',
+    'coletar_nome_navegador_atual',
     'coletar_todas_ids_janelas',
     'contar_elementos',
     'encerrar_navegador',
@@ -563,6 +564,13 @@ def coletar_id_janela():
     id_janela = _navegador.current_window_handle
 
     return id_janela
+
+
+def coletar_nome_navegador_atual() -> str:
+    """Coleta o nome do navegador atual em manipulação."""
+    nome_navegador = _navegador.name
+
+    return nome_navegador
 
 
 def coletar_todas_ids_janelas():
