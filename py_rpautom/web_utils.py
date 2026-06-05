@@ -45,6 +45,7 @@ __all__ = [
     'fechar_janelas_menos_essa',
     'iniciar_navegador',
     'limpar_campo',
+    'maximizar_janela',
     'performar',
     'print_para_pdf',
     'procurar_elemento',
@@ -1115,6 +1116,12 @@ def limpar_campo(
         action.reset_actions()
 
     esperar_pagina_carregar()
+
+
+def maximizar_janela():
+    """Maximiza a janela automatizada."""
+
+    _navegador.maximize_window()
 
 
 def performar(acao, seletor, tipo_elemento='CSS_SELECTOR'):
