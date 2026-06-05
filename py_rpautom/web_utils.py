@@ -6,6 +6,9 @@ from typing import Union
 from py_rpautom import desktop_utils as desktop_utils
 from py_rpautom import python_utils as python_utils
 from py_rpautom._navegadores.base import (
+    _aguardar_elemento_shadowroot,
+    _aguardar_elemento_shadowroot,
+    _aguardar_elemento_shadowroot,
     _coletar_caminho_base_webdriver,
     _coletar_metadata_webdriver_local,
     _coletar_metadata_webdriver_online,
@@ -633,6 +636,8 @@ def aguardar_elemento(
     valor: Union[str | tuple | bool] = '',
     comportamento_esperado: str = 'VISIBILITY_OF_ELEMENT_LOCATED',
     tempo: int = 30,
+    elemento_shadowroot: str = None,
+    tipo_elemento_shadowroot: str = None,
 ):
     """Aguarda o elemento informado estar visível na tela."""
     from selenium.webdriver.support.ui import WebDriverWait
@@ -680,6 +685,16 @@ def aguardar_elemento(
             comportamento_esperado
         )
         complemento = False
+        validacao_shadowroot = (
+            elemento_shadowroot is not None
+            and tipo_elemento_shadowroot is not None
+        )
+        tipo_elemento_shadowroot_escolhido = None
+
+        if validacao_shadowroot is True:
+            tipo_elemento_shadowroot_escolhido = _escolher_tipo_elemento(
+                tipo_elemento_shadowroot
+            )
 
         if (identificador == '') and (tipo_elemento == ''):
             if comportamento_esperado in _lista_ec_sem_parametro:
@@ -698,45 +713,96 @@ def aguardar_elemento(
             if (comportamento_esperado in _lista_ec_com_locator) or (
                 comportamento_esperado in _lista_ec_com_element
             ):
-                wait.until(
-                    tipo_comportamento_esperado(
-                        (tipo_elemento_escolhido, identificador)
+                if validacao_shadowroot is True:
+                    _aguardar_elemento_shadowroot(
+                        wait = wait,
+                        tipo_elemento_shadowroot_escolhido = tipo_elemento_shadowroot_escolhido,
+                        elemento_shadowroot = elemento_shadowroot,
+                        tipo_elemento_escolhido = tipo_elemento_escolhido,
+                        identificador = identificador,
                     )
-                )
+                else:
+                    wait.until(
+                        tipo_comportamento_esperado(
+                            (
+                                tipo_elemento_escolhido,
+                                identificador,
+                            ),
+                        )
+                    )
+
                 complemento = True
             elif (
                 (comportamento_esperado in _lista_ec_com_locator_texto)
                 or (comportamento_esperado in _lista_ec_com_locator_atributo)
                 or (comportamento_esperado in _lista_ec_com_locator_boleano)
             ):
-                wait.until(
-                    tipo_comportamento_esperado(
-                        (tipo_elemento_escolhido, identificador), valor
+                if validacao_shadowroot is True:
+                    _aguardar_elemento_shadowroot(
+                        wait = wait,
+                        tipo_elemento_shadowroot_escolhido = tipo_elemento_shadowroot_escolhido,
+                        elemento_shadowroot = elemento_shadowroot,
+                        tipo_elemento_escolhido = tipo_elemento_escolhido,
+                        identificador = identificador,
                     )
-                )
+                else:
+                    wait.until(
+                        tipo_comportamento_esperado(
+                            (
+                                tipo_elemento_escolhido,
+                                identificador,
+                            ),
+                            valor,
+                        )
+                    )
+
                 complemento = True
             elif comportamento_esperado in _lista_ec_com_element_boleano:
-                wait.until(
-                    tipo_comportamento_esperado(
-                        _procurar_elemento(
-                            tipo_elemento_escolhido, identificador
-                        ),
-                        valor,
+                if validacao_shadowroot is True:
+                    _aguardar_elemento_shadowroot(
+                        wait = wait,
+                        tipo_elemento_shadowroot_escolhido = tipo_elemento_shadowroot_escolhido,
+                        elemento_shadowroot = elemento_shadowroot,
+                        tipo_elemento_escolhido = tipo_elemento_escolhido,
+                        identificador = identificador,
                     )
-                )
+                else:
+                    wait.until(
+                        tipo_comportamento_esperado(
+                            _procurar_elemento(
+                                tipo_elemento_escolhido,
+                                identificador,
+                            ),
+                            valor,
+                        )
+                    )
+
                 complemento = True
             elif (
                 comportamento_esperado in _lista_ec_com_locator_atributo_texto
             ):
                 atributo = valor[0]
                 texto = valor[1]
-                wait.until(
-                    tipo_comportamento_esperado(
-                        (tipo_elemento_escolhido, identificador),
-                        atributo,
-                        texto,
+                if validacao_shadowroot is True:
+                    _aguardar_elemento_shadowroot(
+                        wait = wait,
+                        tipo_elemento_shadowroot_escolhido = tipo_elemento_shadowroot_escolhido,
+                        elemento_shadowroot = elemento_shadowroot,
+                        tipo_elemento_escolhido = tipo_elemento_escolhido,
+                        identificador = identificador,
                     )
-                )
+                else:
+                    wait.until(
+                        tipo_comportamento_esperado(
+                            (
+                                tipo_elemento_escolhido,
+                                identificador,
+                            ),
+                            atributo,
+                            texto,
+                        )
+                    )
+
                 complemento = True
             elif (
                 (comportamento_esperado in _lista_ec_com_titulo)
@@ -749,7 +815,14 @@ def aguardar_elemento(
                 raise
 
         if complemento is True:
-            centralizar_elemento(identificador, tipo_elemento)
+            if validacao_shadowroot is True:
+                centralizar_elemento(
+                    elemento_shadowroot,
+                    tipo_elemento_shadowroot,
+                )
+            else:
+                centralizar_elemento(identificador, tipo_elemento)
+
             esperar_pagina_carregar()
 
         return True
@@ -775,12 +848,23 @@ def procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
     return lista_webelementos_str
 
 
-def procurar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
+def procurar_elemento(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+    elemento_shadowroot: str = None,
+    tipo_elemento_shadowroot: str = None,
+):
     """Procura um elemento presente que corresponda ao informado."""
 
     try:
         tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
-        _procurar_elemento(seletor, tipo_elemento)
+        tipo_elemento_shadowroot = _escolher_tipo_elemento(tipo_elemento_shadowroot)
+        _procurar_elemento(
+            seletor = seletor,
+            tipo_elemento = tipo_elemento,
+            elemento_shadowroot = elemento_shadowroot,
+            tipo_elemento_shadowroot = tipo_elemento_shadowroot,
+        )
         centralizar_elemento(seletor, tipo_elemento)
 
         return True
@@ -912,12 +996,19 @@ def clicar_elemento(
     com_alerta: bool = False,
     lista_id_alertas: list = ['text'],
     tempo_alerta: int = 30,
+    elemento_shadowroot: str = None,
+    tipo_elemento_shadowroot: str = None,
 ):
     """Clica em um elemento informado."""
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
     centralizar_elemento(seletor, tipo_elemento)
-    elemento = _procurar_elemento(seletor, tipo_elemento)
+    elemento = _procurar_elemento(
+        seletor = seletor,
+        tipo_elemento = tipo_elemento,
+        elemento_shadowroot = elemento_shadowroot,
+        tipo_elemento_shadowroot = tipo_elemento_shadowroot,
+    )
     elemento.click()
 
     if com_alerta is True:

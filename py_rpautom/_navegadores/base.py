@@ -1,4 +1,5 @@
 from collections import namedtuple
+from functools import partial
 from typing import Union
 
 from py_rpautom._navegadores.chrome import (
@@ -18,6 +19,8 @@ from py_rpautom._navegadores.firefox import (
 )
 from py_rpautom import python_utils
 from requests import Response
+from selenium.webdriver.support.expected_conditions import WebDriverOrWebElement
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 _navegadores_permitodos = ['CHROME', 'EDGE', 'FIREFOX']
@@ -38,6 +41,54 @@ _webdriver_info = namedtuple(
         'tamanho',
     ],
 )
+
+
+def _aguardar_elemento_shadowroot(
+    wait: WebDriverWait,
+    tipo_elemento_shadowroot_escolhido: str,
+    elemento_shadowroot: str,
+    tipo_elemento_escolhido: str,
+    identificador: str,
+):
+    try:
+        wait.until(
+            partial(
+                _buscar_elemento_shadowroot,
+                tipo_elemento_shadowroot_escolhido,
+                elemento_shadowroot,
+                tipo_elemento_escolhido,
+                identificador,
+            )
+        )
+
+        return True
+    except Exception:
+        return False
+
+
+def _buscar_elemento_shadowroot(
+    tipo_elemento_shadowroot_escolhido: str,
+    elemento_shadowroot: str,
+    tipo_elemento_escolhido: str,
+    identificador: str,
+    _navegador,
+):
+    try:
+        shadowroot = _retornar_shadowroot(
+            _navegador,
+            tipo_elemento_shadowroot_escolhido,
+            elemento_shadowroot,
+        )
+
+        elemento = shadowroot.find_element(
+            tipo_elemento_escolhido,
+            identificador,
+        )
+
+        return elemento
+
+    except Exception:
+        return False
 
 
 def _adicionar_extras(
@@ -463,7 +514,9 @@ def _escolher_tipo_elemento(tipo_elemento):
     from selenium.webdriver.common.by import By
 
 
-    if tipo_elemento.upper() == 'CLASS_NAME':
+    if not tipo_elemento:
+        tipo_elemento = None
+    elif tipo_elemento.upper() == 'CLASS_NAME':
         tipo_elemento = By.CLASS_NAME
     elif tipo_elemento.upper() == 'CSS_SELECTOR':
         tipo_elemento = By.CSS_SELECTOR
@@ -483,7 +536,9 @@ def _escolher_tipo_elemento(tipo_elemento):
     return tipo_elemento
 
 
-def _escolher_comportamento_esperado(comportamento_esperado: str):
+def _escolher_comportamento_esperado(
+    comportamento_esperado: str,
+) -> callable[WebDriverOrWebElement]:
     """Escolhe um tipo de comportamento manipulado pelo Selenium."""
     from selenium.webdriver.support import expected_conditions as EC
 
@@ -591,12 +646,29 @@ def _instanciar_webdriver(
     return _navegador
 
 
-def _procurar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
+def _procurar_elemento(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+    elemento_shadowroot: str = None,
+    tipo_elemento_shadowroot: str = None,
+):
+    """Procura um elemento presente que corresponda ao informado."""
     from py_rpautom.web_utils import _navegador, centralizar_elemento
 
-    """Procura um elemento presente que corresponda ao informado."""
+    arvore_webelemento = _navegador
+
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
-    webelemento = _navegador.find_element(tipo_elemento, seletor)
+    if elemento_shadowroot and tipo_elemento_shadowroot:
+        tipo_elemento = _escolher_tipo_elemento(tipo_elemento_shadowroot)
+        elemento_raiz = _navegador.find_element(
+            tipo_elemento,
+            elemento_shadowroot,
+        )
+
+        arvore_webelemento = elemento_raiz.shadow_root
+
+    webelemento = arvore_webelemento.find_element(tipo_elemento, seletor)
+
     centralizar_elemento(seletor, tipo_elemento)
 
     return webelemento
@@ -833,3 +905,16 @@ def _criar_caminho_webdriver(
         resultado_caminho_webdriver = False
 
     return resultado_caminho_webdriver
+
+
+def _retornar_shadowroot(
+    _navegador: WebDriverOrWebElement,
+    tipo_elemento_raiz: str,
+    elemento_raiz: str,
+):
+    elemento_raiz = _navegador.find_element(
+        tipo_elemento_raiz,
+        elemento_raiz,
+    )
+
+    return elemento_raiz.shadow_root
