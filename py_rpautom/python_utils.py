@@ -30,6 +30,7 @@ __all__ = [
     'escrever_em_arquivo',
     'excluir_arquivo',
     'excluir_pasta',
+    'executar_comando_terminal',
     'extrair_texto_ocr',
     'finalizar_processo',
     'gravar_log_em_arquivo',
@@ -45,7 +46,6 @@ __all__ = [
     'retornar_data_hora_atual',
     'transformar_arquivo_em_base64',
 ]
-
 
 from typing import Union
 
@@ -307,10 +307,15 @@ def caminho_existente(caminho):
 
 
 def cls():
-    """Limpa a visualização do terminal."""
-    import os
+    """Limpa a visualização do terminal/PowerShell."""
 
-    os.system('cls')
+    comando = [
+        'powershell',
+        '-Command',
+        'cls'
+    ]
+
+    executar_comando_terminal(comando=comando)
 
 
 def coletar_arvore_caminho(caminho):
@@ -787,6 +792,41 @@ def excluir_pasta(caminho, vazia: bool = True):
 
         # retorna True caso a operação tenha concluída com sucesso
         return True
+
+
+def executar_comando_terminal(
+    comando: list[str],
+    tempo_limite: int | None = None,
+    nova_linha: bool = False,
+    diretorio_execucao: str = None,
+):
+    """Executa um comando de terminal."""
+    # Importa função de caminho atual no terminal
+    from os import getcwd
+    # Importa recursos do módulo Path
+    from pathlib import Path
+    # Importa recurso de execução em terminal
+    from subprocess import run
+
+
+    # Valida se foi informado diretório de execução, caso não
+    if diretorio_execucao is None:
+        # Define diretório atual como padrão
+        diretorio_execucao = Path(getcwd())
+
+    # Executa o comando no sistema
+    resultado_comando = run(
+        args=comando,
+        capture_output=True,
+        cwd=str(Path(diretorio_execucao).absolute()),
+        timeout=tempo_limite,
+        check=True,
+        text=nova_linha,
+        shell=False,
+    )
+
+    # Retorna o resultado da execução do comando
+    return resultado_comando
 
 
 def extrair_texto_ocr(arquivo, linguagem, encoding='utf8'):
