@@ -100,7 +100,7 @@ def baixar_arquivo(
 
 def baixar_webdriver(
     nome_navegador: str,
-    versao_navegador: str,
+    versao_navegador: list[str],
     proxies: dict[str, str] = None,
     autenticacao: Union[None, list] = None,
 ) -> _webdriver_info:
