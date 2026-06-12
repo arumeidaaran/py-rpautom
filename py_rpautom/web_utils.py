@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 from typing import Union
+from pathlib import Path
 
 from py_rpautom import desktop_utils as desktop_utils
 from py_rpautom import python_utils as python_utils
@@ -30,6 +31,7 @@ __all__ = [
     'baixar_arquivo',
     'baixar_webdriver',
     'centralizar_elemento',
+    'capturar_janela_em_imagem',
     'clicar_elemento',
     'coletar_atributo',
     'coletar_id_janela',
@@ -598,6 +600,19 @@ def voltar_pagina():
     _navegador.back()
 
     esperar_pagina_carregar()
+
+
+def capturar_janela_em_imagem(imagem: Union[str, Path]):
+    """Tira uma captura da janela automatizada e a salva em imagem png."""
+
+    imagem_path = Path(imagem).absolute()
+
+    if not str(imagem_path).lower().endswith(".png"):
+        raise ValueError(
+            'O nome do arquivo precisa terminar com uma extensão `.png`'
+        )
+
+    return _navegador.save_screenshot(str(imagem_path))
 
 
 def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
