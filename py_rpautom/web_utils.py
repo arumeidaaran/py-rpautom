@@ -72,7 +72,37 @@ def baixar_arquivo(
     proxies: dict[str, str] = None,
 ) -> bool:
     """Baixa um arquivo mediante uma url do arquivo e um
-    caminho de destino já com o nome do arquivo a ser gravado."""
+    caminho de destino já com o nome do arquivo a ser gravado.
+
+    Parameters:
+        url: URL HTTP/HTTPS do arquivo que será baixado.
+        caminho_destino: Caminho completo, incluindo nome e extensão, onde
+            o arquivo será salvo.
+        stream: Define se a requisição será feita em modo stream.
+        verificacao_ssl: Define se o certificado SSL será validado.
+        autenticacao: Lista com usuário e senha para autenticação HTTP básica.
+        header_arg: Dicionário de headers enviado na requisição.
+        tempo_limite: Tempo limite, em segundos, para a requisição.
+        proxies: Dicionário de proxies usado pelo requests.
+
+    Returns:
+        Retorna booleano, `True` quando a resposta HTTP for 200, `False`
+        quando o arquivo for gravado mas a resposta HTTP for diferente de
+        200.
+
+    Raises:
+        Repassa exceções de escrita de arquivo e exceções geradas por
+        `requisitar_url`.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> destino = Path('nome_arquivo.extensao').absolute()
+        >>> baixar_arquivo(
+        ...     url='https://example.com/',
+        ...     caminho_destino=str(destino),
+        ... )
+        True
+    """
     from shutil import copyfileobj
 
     caminho_interno_absoluto = python_utils.coletar_caminho_absoluto(
@@ -104,7 +134,35 @@ def baixar_webdriver(
     proxies: dict[str, str] = None,
     autenticacao: Union[None, list] = None,
 ) -> _webdriver_info:
-    """Baixa o webdriver do navegador informado."""
+    """Baixa ou localiza o webdriver compatível com o navegador informado.
+
+    Parameters:
+        nome_navegador: Nome do navegador. Aceita Chrome, Edge ou Firefox.
+        versao_navegador: Lista com os componentes da versão do navegador.
+            ex.: ['100', '0', '0', '1']
+        proxies: Dicionário de proxies usado nas requisições de metadata e
+            download.
+        autenticacao: Lista com usuário e senha para autenticação HTTP básica.
+
+    Returns:
+        Retorna `webdriver_info` com metadata do webdriver e caminho do
+        executável encontrado ou baixado.
+
+    Raises:
+        SystemError: Não foi possível criar a pasta base do webdriver.
+
+        Repassa exceções das funções de metadata, download e descompactação.
+
+    Examples:
+        >>> caminho_chrome = (
+        ...     r'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+        ... )
+        >>> versao = python_utils.coletar_versao_arquivo(caminho_chrome)
+        >>> info = baixar_webdriver(
+        ...     nome_navegador='CHROME',
+        ...     versao_navegador=versao,
+        ... )
+    """
     global wdm_ssl_verify
 
     webdriver_info = namedtuple(
@@ -296,7 +354,41 @@ def iniciar_navegador(
     proxies: dict[str, str] = None,
     baixar_webdriver_previamente: bool = True,
 ):
-    """Inicia uma instância automatizada de um navegador."""
+    """Inicia uma instância automatizada de um navegador.
+
+    Parameters:
+        url: URL inicial que será aberta no navegador.
+        nome_navegador: Nome do navegador. Aceita Chrome, Edge ou Firefox.
+        options: Tupla com argumentos adicionados às opções do navegador.
+        extensoes: Tupla com caminhos de extensões adicionadas ao navegador.
+        experimentos: Tupla com pares de chave e valor para opções
+            experimentais do navegador.
+        capacidades: Tupla com pares de chave e valor para capacidades do
+            navegador.
+        executavel: Caminho do executável do webdriver.
+        caminho_navegador: Caminho do executável do navegador.
+        porta_webdriver: Porta de conexão a ser utilizada. 
+        proxies: Dicionário de proxies usado ao baixar o webdriver.
+        baixar_webdriver_previamente: Define se o webdriver será baixado
+            antes de iniciar o navegador.
+
+    Returns:
+        Retorna booleano, `True` quando o navegador é iniciado e a página
+        inicial é aberta.
+
+    Raises:
+        ValueError: `porta_webdriver` precisa ser número inteiro.
+
+        ValueError: O executável do webdriver não foi informado ou não foi
+        encontrado.
+
+    Examples:
+        >>> iniciar_navegador(
+        ...     url='https://bing.com',
+        ...     nome_navegador='chrome',
+        ... )
+        True
+    """
     from urllib3 import disable_warnings
     from ._navegadores.base import (
         _adicionar_extras,
@@ -421,25 +513,68 @@ def autenticar_navegador(
 ) -> bool:
     """Autentica em pop-ups de credenciais em navegador.
 
-    Args:
-        ``usuario (str)``: String contendo usuário para digitação no campo correspondente.
-
-        ``senha (str)``: String contendo senha para digitação no campo correspondente.
-
-        ``caminho_janela (dict)``: dicionário contendo caminho até o título do navegador.
-
-        ``caminho_usuario (dict)``: dicionário contendo caminho até o elemento usuário no pop-up navegador.
-
-        ``caminho_senha (dict)``: dicionário contendo caminho até o elemento senha no pop-up navegador.
-
-        ``caminho_botao_aprovacao (dict)``: dicionário contendo caminho até o elemento botão de confirmação no pop-up navegador.
-
-        ``pid_aplicacao (int)``: Número inteiro contendo o PID do navegador que contém o popup de autenticação.
-
-        ``estilo_aplicacao (str)``: String contendo o estilo de aplicação entre uia e win32.
+    Parameters:
+        usuario: Usuário digitado no campo de usuário do pop-up.
+        senha: Senha digitada no campo de senha do pop-up.
+        caminho_janela: Caminho da janela da janela do pop-up.
+        caminho_usuario: Caminho do elemento na janela do campo de usuário.
+        caminho_senha: Caminho do elemento na janela do campo de senha.
+        caminho_botao_aprovacao: Caminho do elemento na janela do botão de
+            confirmação.
+        pid_aplicacao: PID do navegador que contém o pop-up.
+        estilo_aplicacao: Backend usado pelo do elemento na janela,
+            sendo `uia` ou `win32`.
 
     Returns:
-        Retorna valor booleano. True for sucesso, False para erro na operação de autenticar.
+        Retorna booleano, `True` quando o pop-up é localizado e as credenciais
+        são enviadas, `False` quando a janela informada não é localizada.
+
+    Raises:
+        ValueError: `usuario` precisa ser do tipo str.
+
+        ValueError: `senha` precisa ser do tipo str.
+
+        ValueError: `caminho_janela` precisa ser do tipo dict.
+
+        ValueError: `caminho_usuario` precisa ser do tipo dict.
+
+        ValueError: `caminho_senha` precisa ser do tipo dict.
+
+        ValueError: `caminho_botao_aprovacao` precisa ser do tipo dict.
+
+        ValueError: `pid_aplicacao` precisa ser do tipo int.
+
+        ValueError: `estilo_aplicacao` precisa ser do tipo str.
+
+    Examples:
+        >>> pid_navegador = 39440
+        >>> autenticar_navegador(
+        ...     usuario='usuario_teste',
+        ...     senha='senha_teste',
+        ...     caminho_janela={
+        ...         'window': {'title': 'Authentication Required'}
+        ...     },
+        ...     caminho_usuario={
+        ...         'window': {
+        ...             'title': 'Authentication Required',
+        ...             'child_window': {'auto_id': '1001'},
+        ...         }
+        ...     },
+        ...     caminho_senha={
+        ...         'window': {
+        ...             'title': 'Authentication Required',
+        ...             'child_window': {'auto_id': '1002'},
+        ...         }
+        ...     },
+        ...     caminho_botao_aprovacao={
+        ...         'window': {
+        ...             'title': 'Authentication Required',
+        ...             'child_window': {'title': 'OK'},
+        ...         }
+        ...     },
+        ...     pid_aplicacao=pid_navegador,
+        ... )
+        True
     """
     # Validar o tipo da varivavel
     if isinstance(usuario, str) is False:
@@ -501,7 +636,20 @@ def autenticar_navegador(
 
 
 def abrir_pagina(url: str):
-    """Abre uma página web mediante a URL informada."""
+    """Abre uma página web mediante a URL informada.
+
+    Parameters:
+        url: URL que será carregada na janela atual.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a página não possa ser aberta.
+
+    Examples:
+        >>> abrir_pagina(url='https://bing.com')
+    """
     global _navegador
 
     _navegador.get(url)
@@ -509,13 +657,42 @@ def abrir_pagina(url: str):
 
 
 def abrir_janela(url: str = None):
-    """Abre uma nova janela/aba do navegador automatizado."""
+    """Abre uma nova janela/aba do navegador automatizado.
+
+    Parameters:
+        url: URL carregada na nova janela/aba. Quando `None`, abre uma janela
+        vazia conforme comportamento do navegador.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso o script de abertura falhe.
+
+    Examples:
+        >>> abrir_janela()
+
+        >>> abrir_janela(url='https://bing.com')
+    """
     _navegador.window_handles
     _navegador.execute_script(f'window.open("{url}")')
 
 
 def atualizar_pagina():
-    """Atualiza a página web."""
+    """Atualiza a página web atual.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a atualização falhe.
+
+    Examples:
+        >>> atualizar_pagina()
+    """
     global _navegador
 
     _navegador.refresh()
@@ -523,7 +700,30 @@ def atualizar_pagina():
 
 
 def trocar_para(id, tipo):
-    """Troca de contexto da automação web mediante o tipo e o id informados."""
+    """Troca de contexto da automação web mediante o tipo e o id informados.
+
+    Parameters:
+        id: Identificador usado na troca de contexto. Para `WINDOW`, é o
+            índice da janela na lista de handles. Para `ALERT`, aceita
+            `TEXT`, `DISMISS`, `ACCEPT` ou comando de envio de texto.
+        tipo: Tipo de contexto. Aceita `FRAME`, `PARENT_FRAME`,
+            `NEW_WINDOW`, `WINDOW`, `ALERT`, `ACTIVE_ELEMENT` e
+            `DEFAULT_CONTENT`.
+
+    Returns:
+        Retorna `True` quando a troca é concluída, o texto do alerta quando
+        `tipo='ALERT'` e `id='TEXT'`, ou `False` quando ocorrer erro.
+
+    Raises:
+        Não levanta exceções.
+
+    Examples:
+        >>> trocar_para(id=1, tipo='WINDOW')
+        True
+
+        >>> trocar_para(id='', tipo='DEFAULT_CONTENT')
+        True
+    """
 
     try:
         resultado: bool = True
@@ -563,29 +763,80 @@ def trocar_para(id, tipo):
 
 
 def coletar_id_janela():
-    """Coleta um ID de uma janela/aba."""
+    """Coleta o ID da janela/aba atual do navegador automatizado.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Retorna string com o handle da janela/aba atual.
+
+    Raises:
+        Repassa exceções caso não exista janela ativa.
+
+    Examples:
+        >>> id_janela = coletar_id_janela()
+    """
     id_janela = _navegador.current_window_handle
 
     return id_janela
 
 
 def coletar_nome_navegador_atual() -> str:
-    """Coleta o nome do navegador atual em manipulação."""
+    """Coleta o nome do navegador atual em manipulação.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Retorna string com o nome do navegador.
+
+    Raises:
+        Repassa exceções caso o navegador não esteja iniciado.
+
+    Examples:
+        >>> nome = coletar_nome_navegador_atual()
+    """
     nome_navegador = _navegador.name
 
     return nome_navegador
 
 
 def coletar_todas_ids_janelas():
-    """Coleta uma lista de todos os ID's de
-    janelas/abas do navegador automatizado."""
+    """Coleta uma lista de todos os ID's de janelas/abas do navegador.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Retorna lista de strings com os handles das janelas/abas abertas.
+
+    Raises:
+        Repassa exceções caso o navegador não esteja iniciado.
+
+    Examples:
+        >>> ids = coletar_todas_ids_janelas()
+    """
     ids_janelas = _navegador.window_handles
 
     return ids_janelas
 
 
 def esperar_pagina_carregar():
-    """Espera o carregamento total da página automatizada acontecer."""
+    """Espera o carregamento total da página automatizada acontecer.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a espera falhe.
+
+    Examples:
+        >>> esperar_pagina_carregar()
+    """
 
     estado_pronto = False
     while estado_pronto is False:
@@ -596,14 +847,43 @@ def esperar_pagina_carregar():
 
 
 def voltar_pagina():
-    """Volta o contexto de histórico do navegador automatizado."""
+    """Volta uma posição no histórico do navegador automatizado.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a navegação falhe.
+
+    Examples:
+        >>> voltar_pagina()
+    """
     _navegador.back()
 
     esperar_pagina_carregar()
 
 
 def capturar_janela_em_imagem(imagem: Union[str, Path]):
-    """Tira uma captura da janela automatizada e a salva em imagem png."""
+    """Tira uma captura da janela automatizada e salva em imagem PNG.
+
+    Parameters:
+        imagem: Caminho do arquivo PNG que receberá a captura.
+
+    Returns:
+        Retorna o resultado booleano de `_navegador.save_screenshot`.
+
+    Raises:
+        ValueError: O nome do arquivo precisa terminar com `.png`.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> imagem = Path('janela_teste.png').absolute()
+        >>> capturar_janela_em_imagem(imagem)
+        True
+    """
 
     imagem_path = Path(imagem).absolute()
 
@@ -616,7 +896,32 @@ def capturar_janela_em_imagem(imagem: Union[str, Path]):
 
 
 def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
-    """Centraliza um elemento informado na tela."""
+    """Centraliza um elemento informado na janela do navegador automatizado.
+
+    Parameters:
+        seletor: Seletor do elemento que será centralizado.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado ou quando o tipo
+        de seletor não é compatível com o script executado.
+
+    Examples:
+        >>> centralizar_elemento(
+        ...     seletor='button[id="fim"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+
+        >>> centralizar_elemento(
+        ...     seletor='//button[@id="fim"]',
+        ...     tipo_elemento='XPATH',
+        ... )
+    """
     seletor = seletor.replace('"', "'")
 
     if tipo_elemento.upper() == 'CSS_SELECTOR':
@@ -635,7 +940,31 @@ def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
 
 
 def executar_script(script, args='', assincrono=False):
-    """Executa um script Javascript na página automatizada."""
+    """Executa um script Javascript na página automatizada.
+
+    Parameters:
+        script: Código JavaScript que será executado.
+        args: Argumento enviado ao script como `arguments[0]`. Quando vazio,
+            nenhum argumento é enviado.
+        assincrono: Define se será usado `execute_async_script`.
+
+    Returns:
+        Retorna o valor devolvido pelo JavaScript executado.
+
+    Raises:
+        Repassa exceções caso o script falhe.
+
+    Examples:
+        >>> executar_script(script='return document.title')
+        'Script'
+
+        >>> executar_script(
+        ...     script='return arguments[0] + 2',
+        ...     args=3,
+        ...     assincrono=True,
+        ... )
+        5
+    """
     try:
         _executar_script = _navegador.execute_script
         if assincrono:
@@ -653,7 +982,25 @@ def executar_script(script, args='', assincrono=False):
 
 
 def retornar_codigo_fonte():
-    """Coleta e retorna o código HTML da página automatizada."""
+    """Coleta e retorna o código HTML da página automatizada.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Retorna string com o HTML da página atual.
+
+    Raises:
+        Repassa exceções caso o navegador não esteja iniciado.
+
+    Examples:
+        >>> retornar_codigo_fonte()
+        '''
+        <!DOCTYPE html><html lang="en"><head>    <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title></head><body>    </body></html>
+        '''
+    """
     codigo_fonte = _navegador.page_source
 
     return codigo_fonte
@@ -668,7 +1015,63 @@ def aguardar_elemento(
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
 ):
-    """Aguarda o elemento informado estar visível na tela."""
+    """Aguarda um comportamento esperado acontecer no navegador.
+
+    Parameters:
+        identificador: Seletor, texto, URL, título, quantidade ou outro valor
+            exigido pelo comportamento esperado.
+        tipo_elemento: Tipo de seletor usado com `identificador`. Aceita
+            `CLASS_NAME`, `CSS_SELECTOR`, `ID`, `LINK_TEXT`, `NAME`,
+            `PARTIAL_LINK_TEXT`, `TAG_NAME` e `XPATH`.
+        valor: Valor complementar usado por comportamentos que esperam texto,
+            atributo ou estado booleano.
+        comportamento_esperado: Nome do comportamento do elemento no HTML.
+        tempo: Tempo máximo, em segundos, da espera.
+        elemento_shadowroot: Seletor do elemento host que contém o
+            ShadowRoot.
+        tipo_elemento_shadowroot: Tipo de seletor usado para localizar o host
+            do ShadowRoot.
+
+    Returns:
+        Retorna booleano, `True` quando a espera é concluída, `False` quando
+        ocorre erro ou timeout.
+
+    Raises:
+        Não levanta exceções.
+
+    Examples:
+        >>> aguardar_elemento(
+        ...     identificador='span[id="salvar"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+        False
+
+        >>> aguardar_elemento(
+        ...     identificador='button[id="salvar"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     comportamento_esperado='ELEMENT_TO_BE_CLICKABLE',
+        ... )
+        True
+
+        >>> from urllib.parse import quote
+        ... html_shadow = '''
+        ... <div id="host"></div>
+        ... <script>
+        ... document.querySelector("#host")
+        ...     .attachShadow({mode: "open"})
+        ...     .innerHTML = '<button id="interno">OK</button>';
+        ... </script>
+        ... '''
+        >>> abrir_pagina(f'data:text/html,{quote(html_shadow)}')
+        ... aguardar_elemento>>> aguardar_elemento(
+        ...    identificador='button[id="interno"]',
+        ...    tipo_elemento='CSS_SELECTOR',
+        ...    elemento_shadowroot='div[id="host"]',
+        ...    tipo_elemento_shadowroot='CSS_SELECTOR',
+        ...    tempo='5',
+        ... )
+        True
+    """
     from selenium.webdriver.support.ui import WebDriverWait
 
     _lista_ec_sem_parametro = ['ALERT_IS_PRESENT']
@@ -860,7 +1263,27 @@ def aguardar_elemento(
 
 
 def procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
-    """Procura todos os elementos presentes que correspondam ao informado."""
+    """Procura todos os elementos presentes que correspondam ao informado.
+
+    Parameters:
+        seletor: Seletor usado para localizar os elementos.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna lista de strings com o texto de cada elemento localizado.
+
+    Raises:
+        Repassa exceções quando a busca ou a centralização falha.
+
+    Examples:
+        >>> procurar_muitos_elementos(
+        ...     seletor='//td[@class='item']',
+        ...     tipo_elemento='XPATH',
+        ... )
+        ['A', 'B']
+    """
     # instancia uma lista vazia
     lista_webelementos_str = []
 
@@ -883,7 +1306,51 @@ def procurar_elemento(
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
 ):
-    """Procura um elemento presente que corresponda ao informado."""
+    """Procura um elemento presente que corresponda ao informado.
+
+    Parameters:
+        seletor: Seletor do elemento procurado.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+        elemento_shadowroot: Seletor do elemento host que contém o ShadowRoot.
+        tipo_elemento_shadowroot: Tipo de seletor usado para localizar o host
+            do ShadowRoot. Aceita os tipos 'NONE', 'CLASS_NAME',
+            'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 'PARTIAL_LINK_TEXT',
+            'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna booleano, `True` quando o elemento é encontrado, `False`
+        quando a busca falha.
+
+    Raises:
+        Não levanta exceções.
+
+    Examples:
+        >>> procurar_elemento(
+        ...     seletor='input[name="enviar"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+        True
+
+        >>> from urllib.parse import quote
+        ... html_shadow = '''
+        ... <div id="host"></div>
+        ... <script>
+        ... document.querySelector("#host")
+        ...     .attachShadow({mode: "open"})
+        ...     .innerHTML = '<button id="interno">OK</button>';
+        ... </script>
+        ... '''
+        >>> abrir_pagina(f'data:text/html,{quote(html_shadow)}')
+        >>> procurar_elemento(
+        ...     seletor='button[id="interno"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     elemento_shadowroot='div[id="host"]',
+        ...     tipo_elemento_shadowroot='CSS_SELECTOR',
+        ... )
+        True
+    """
 
     try:
         tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
@@ -906,8 +1373,30 @@ def selecionar_elemento(
     valor: str,
     tipo_elemento: str = 'CSS_SELECTOR',
 ):
-    """Seleciona em elemento de seleção um
-    valor que corresponda ao informado."""
+    """Seleciona em elemento de seleção um valor pelo texto visível.
+
+    Parameters:
+        seletor: Seletor do elemento `select`.
+        valor: Texto visível da opção que será selecionada.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna booleano, `True` quando a seleção é concluída.
+
+    Raises:
+        Repassa exceções quando o elemento não existe ou quando o valor
+        visível não é encontrado.
+
+    Examples:
+        >>> selecionar_elemento(
+        ... seletor='//select[@id="ufff"]',
+        ... valor='afff',
+        ... tipo_elemento='XPATH',
+        ... )
+        True
+    """
     from selenium.webdriver.support.ui import Select
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
@@ -924,7 +1413,27 @@ def selecionar_elemento(
 
 
 def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
-    """Conta todos os elementos presentes que correspondam ao informado."""
+    """Conta todos os elementos presentes que correspondam ao informado.
+
+    Parameters:
+        seletor: Seletor usado para localizar os elementos.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME',
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna inteiro com a quantidade de elementos encontrados.
+
+    Raises:
+        Repassa exceções quando a busca ou a centralização falha.
+
+    Examples:
+        >>> contar_elementos(
+        ...     seletor='//table[@id="valor"]',
+        ...     tipo_elemento='XPATH',
+        ... )
+        2
+    """
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
     centralizar_elemento(seletor, tipo_elemento)
     elementos = _procurar_muitos_elementos(seletor, tipo_elemento)
@@ -933,7 +1442,27 @@ def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
 
 
 def extrair_texto(seletor, tipo_elemento='CSS_SELECTOR'):
-    """Extrai o texto de um elemento informado."""
+    """Extrai o texto de um elemento informado.
+
+    Parameters:
+        seletor: Seletor do elemento.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna string com o texto do elemento localizado.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado.
+
+    Examples:
+        >>> extrair_texto(
+        ...     seletor='span[id="total"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+        '10,00'
+    """
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
     elemento = _procurar_elemento(seletor, tipo_elemento)
     text_element = elemento.text
@@ -948,22 +1477,34 @@ def coletar_atributo(
     tipo_elemento: str = 'CSS_SELECTOR',
     metodo: str = 'get_attribute',
 ):
-    """Coleta o valor de um atributo solicitado do elemento informado.
+    """Coleta o valor de um atributo ou propriedade CSS de um elemento.
 
-    Args:
-        ``seletor (str)``: Caminho do seletor HTML (DOM) '
-        'correspondente ao tipo de elemento escolhido.
-
-        ``atributo (str)``: Atributo da qual se quer coletar o valor.
-
-        ``tipo_elemento (str)``: Tipo de seletor. '
-        'Ex.: xpath, css_selector, link_text...
-
-        ``metodo (str)``: Tipo de coleta. '
-        'Ex.: get_attribute, value_of_css_property.
+    Parameters:
+        seletor: Seletor do elemento.
+        atributo: Nome do atributo, atributo DOM ou propriedade CSS.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+        metodo: Método de coleta. Aceita `get_attribute`, `get_dom_attribute`
+            e `value_of_css_property`.
 
     Returns:
-        Retorna o valor coletado."""
+        Retorna o valor coletado do elemento.
+
+    Raises:
+        ValueError: `metodo` precisa ser um dos métodos aceitos.
+
+        Repassa exceções quando o elemento não é encontrado.
+
+    Examples:
+        >>> coletar_atributo(
+        ...     seletor='a[id="link"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     atributo='display',
+        ...     metodo='value_of_css_property',
+        ... )
+        'inline'
+    """
 
     lista_metodos = [
         'get_attribute',
@@ -996,7 +1537,31 @@ def alterar_atributo(
     novo_valor,
     tipo_elemento='CSS_SELECTOR',
 ):
-    """Coleta o valor de um atributo solicitado do elemento informado."""
+    """Altera uma propriedade de um elemento.
+
+    Parameters:
+        seletor: Seletor do elemento.
+        atributo: Nome da propriedade do elemento que será alterada.
+        novo_valor: Novo valor atribuído à propriedade.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna o valor do atributo após a alteração.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado.
+
+    Examples:
+        >>> alterar_atributo(
+        ...     seletor='//input[@id="campo"]',
+        ...     tipo_elemento='XPATH',
+        ...     atributo='value',
+        ...     novo_valor='novo',
+        ... )
+        'novo'
+    """
     seletor = seletor.replace('"', "'")
     tipo_elemento_transformado = _escolher_tipo_elemento(tipo_elemento)
     elemento = _procurar_elemento(seletor, tipo_elemento_transformado)
@@ -1028,7 +1593,57 @@ def clicar_elemento(
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
 ):
-    """Clica em um elemento informado."""
+    """Clica em um elemento informado.
+
+    Parameters:
+        seletor: Seletor do elemento que receberá o clique.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+        com_alerta: Define se a função deve tratar alertas após o clique.
+        lista_id_alertas: Lista de ações de alerta que será tratada. Recebe 
+            o valor padrão `TEXT` caso não seja informado nada.
+        tempo_alerta: Tempo máximo, em segundos, para aguardar cada alerta.
+        elemento_shadowroot: Seletor do elemento host que contém o ShadowRoot.
+        tipo_elemento_shadowroot: Tipo de seletor usado para localizar o host
+            do ShadowRoot. Aceita os tipos 'NONE', 'CLASS_NAME',
+            'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 'PARTIAL_LINK_TEXT',
+            'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna `True` quando o clique é concluído sem alerta. Quando
+        `com_alerta=True`, retorna o último texto coletado do alerta ou string
+        vazia quando nenhum alerta for encontrado.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado ou quando o
+        clique falha.
+
+    Examples:
+        >>> clicar_elemento(
+        ...     seletor='button[id="botao"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+        True
+
+        >>> from urllib.parse import quote
+        ... html_shadow = '''
+        ... <div id="host"></div>
+        ... <script>
+        ... document.querySelector("#host")
+        ...     .attachShadow({mode: "open"})
+        ...     .innerHTML = '<button id="interno">OK</button>';
+        ... </script>
+        ... '''
+        >>> abrir_pagina(f'data:text/html,{quote(html_shadow)}')
+        >>> clicar_elemento(
+        ...     seletor='button[id="interno"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     elemento_shadowroot='div[id="host"]',
+        ...     tipo_elemento_shadowroot='CSS_SELECTOR',
+        ... )
+        True
+    """
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
     centralizar_elemento(seletor, tipo_elemento)
@@ -1078,6 +1693,24 @@ def clicar_elemento(
 
 
 def validar_porta(ip, porta, tempo_limite=1):
+    """Valida se uma porta TCP informada está aberta para conexão.
+
+    Parameters:
+        ip: Endereço IP ou host que será testado.
+        porta: Porta TCP que será testada.
+        tempo_limite: Tempo limite, em segundos, para tentar a conexão.
+
+    Returns:
+        Retorna booleano, `True` quando a conexão é aceita, `False` quando a
+        porta não responde dentro do tempo limite.
+
+    Raises:
+        Repassa exceções caso a criação do socket falhe.
+
+    Examples:
+        >>> validar_porta(ip='127.0.0.1', porta='80', tempo_limite=10)
+        True
+    """
     import socket
 
     conexao = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1093,7 +1726,31 @@ def validar_porta(ip, porta, tempo_limite=1):
 def escrever_em_elemento(
     seletor, texto, tipo_elemento='CSS_SELECTOR', performar: bool = False
 ):
-    """Digita dentro de um elemento informado."""
+    """Digita dentro de um elemento informado.
+
+    Parameters:
+        seletor: Seletor do elemento que receberá o texto.
+        texto: Texto que será digitado.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+        performar: Define se a digitação será feita com `ActionChains`.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado ou
+        quando a digitação falha.
+
+    Examples:
+        >>> escrever_em_elemento(
+        ...     seletor='input[id="campo"]',
+        ...     texto='valor',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     performar=True,        
+        ... )
+    """
     from selenium.webdriver import ActionChains
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
@@ -1119,7 +1776,29 @@ def escrever_em_elemento(
 def limpar_campo(
     seletor, tipo_elemento='CSS_SELECTOR', performar: bool = False
 ):
-    """Digita dentro de um elemento informado."""
+    """Limpa o valor de um campo informado.
+
+    Parameters:
+        seletor: Seletor do campo que será limpo.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+        performar: Define se a limpeza será feita com uso real de periféricos.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado ou quando a
+        limpeza falha.
+
+    Examples:
+        >>> limpar_campo(
+        ...     seletor='//input[@id="nome"]',
+        ...     tipo_elemento='XPATH',
+        ...     performar=False,
+        ... )
+    """
     from selenium.webdriver import ActionChains
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
@@ -1139,13 +1818,50 @@ def limpar_campo(
 
 
 def maximizar_janela():
-    """Maximiza a janela automatizada."""
+    """Maximiza a janela automatizada.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a janela não possa ser maximizada.
+
+    Examples:
+        >>> maximizar_janela()
+    """
 
     _navegador.maximize_window()
 
 
 def performar(acao, seletor, tipo_elemento='CSS_SELECTOR'):
-    """Simula uma ação real de mouse."""
+    """Simula uma ação real de mouse em um elemento.
+
+    Parameters:
+        acao: Ação que será executada. Aceita `CLICK`, `DOUBLE_CLICK` e
+            `MOVE_TO_ELEMENT`.
+        seletor: Seletor do elemento que receberá a ação.
+        tipo_elemento: Tipo de seletor usado. Aceita os tipos 'NONE',
+            'CLASS_NAME', 'CSS_SELECTOR', 'ID', 'LINK_TEXT', 'NAME', 
+            'PARTIAL_LINK_TEXT', 'TAG_NAME', e 'XPATH'.
+
+    Returns:
+        Retorna booleano, `True` ao final da função.
+
+    Raises:
+        Repassa exceções quando o elemento não é encontrado ou quando a ação
+        falha.
+
+    Examples:
+        >>> performar(
+        ...     acao='DOUBLE_CLICK',
+        ...     seletor='button[id="seguinte"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ... )
+        True
+    """
     from selenium.webdriver import ActionChains
 
     action = ActionChains(_navegador)
@@ -1170,7 +1886,31 @@ def print_para_pdf(
     encolher_para_caber: bool = None,
     orientacao: int = None,
 ):
-    """Realiza o print da página atual e salva em um arquivo informado."""
+    """Realiza o print da página atual e salva em um arquivo PDF.
+
+    Parameters:
+        caminho_arquivo: Caminho do arquivo PDF que será criado.
+        escala: Escala usada no print da página.
+        paginacao: Lista de páginas ou intervalos que serão impressos.
+        fundo: Define se fundos CSS serão impressos.
+        encolher_para_caber: Define se a página será ajustada ao tamanho do
+            papel.
+        orientacao: Índice da orientação da folha. Aceita 0 para portrait e 1
+            para landscape.
+
+    Returns:
+        Retorna booleano, `True` quando o PDF é criado, `False` quando ocorre
+        erro.
+
+    Raises:
+        Não levanta exceções.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> pdf = Path('pagina_teste.pdf').absolute()
+        >>> print_para_pdf(str(pdf))
+        True
+    """
     # importa recursos do módulo base64
     import base64
 
@@ -1229,8 +1969,32 @@ def requisitar_url(
     proxies: dict[str, str] = None,
     metodo: str = 'GET',
 ):
-    """Faz uma requisição http, retornando a resposta
-    dessa requisição no padrão http/https."""
+    """Faz uma requisição HTTP e retorna a resposta.
+
+    Parameters:
+        url: URL requisitada.
+        stream: Define se a resposta será baixada em modo stream.
+        verificacao_ssl: Define se o certificado SSL será validado.
+        autenticacao: Lista com usuário e senha para autenticação HTTP básica.
+        header_arg: Dicionário de headers enviado na requisição.
+        tempo_limite: Tempo limite, em segundos, para a requisição.
+        proxies: Dicionário de proxies usado pela requisição.
+        metodo: Método HTTP executado. Aceita `GET` e `HEAD`.
+
+    Returns:
+        Retorna objeto `requests.Response`.
+
+    Raises:
+        SystemError: `metodo` precisa ser `GET` ou `HEAD`.
+
+        Repassa exceções quando a requisição falha.
+
+    Examples:
+        >>> resposta = requisitar_url(
+        ...     url='https://bing.com/',
+        ...     metodo='HEAD',
+        ... )
+    """
     from requests import get, head
     from requests.auth import HTTPBasicAuth
 
@@ -1260,14 +2024,42 @@ def requisitar_url(
 
 
 def fechar_janela(janela):
-    """Fecha uma janela/aba do navegador automatizado."""
+    """Fecha uma janela/aba do navegador automatizado.
+
+    Parameters:
+        janela: Índice da janela/aba.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso a janela não exista ou não possa ser fechada.
+
+    Examples:
+        >>> id_principal = coletar_id_janela()
+        >>> fechar_janela(id_principal)
+    """
     _navegador.switch_to.window(_navegador.window_handles[janela])
     _navegador.close()
 
 
 def fechar_janelas_menos_essa(id_janela):
-    """Fecha todas as janelas/abas do
-    navegador automatizado menos a informada."""
+    """Fecha todas as janelas/abas do navegador menos a informada.
+
+    Parameters:
+        id_janela: identificador da janela/aba que deve permanecer aberta.
+
+    Returns:
+        Não possui retorno.
+
+    Raises:
+        Repassa exceções caso alguma janela não possa ser selecionada ou
+            fechada.
+
+    Examples:
+        >>> id_principal = coletar_id_janela()
+        >>> fechar_janelas_menos_essa(id_principal)
+    """
     lista_janelas = _navegador.window_handles
     for janela in lista_janelas:
         if janela != id_janela:
@@ -1276,7 +2068,22 @@ def fechar_janelas_menos_essa(id_janela):
 
 
 def encerrar_navegador():
-    """Fecha a instância do navegador automatizado."""
+    """Fecha a instância do navegador automatizado.
+
+    Parameters:
+        Não possui parâmetros.
+
+    Returns:
+        Retorna booleano, `True` quando todas as janelas são fechadas e o
+        navegador é encerrado, `False` quando ocorre erro.
+
+    Raises:
+        Não levanta exceções.
+
+    Examples:
+        >>> encerrar_navegador()
+        True
+    """
     try:
         for janela in range(0, len(_navegador.window_handles)):
             fechar_janela(janela)
