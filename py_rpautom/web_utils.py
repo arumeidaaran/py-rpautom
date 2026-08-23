@@ -380,7 +380,7 @@ def iniciar_navegador(
         ValueError: `porta_webdriver` precisa ser número inteiro.
 
         ValueError: O executável do webdriver não foi informado ou não foi
-        encontrado.
+            encontrado.
 
     Examples:
         >>> iniciar_navegador(
