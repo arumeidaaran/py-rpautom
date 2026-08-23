@@ -13,6 +13,10 @@ plugins:
       handlers:
         python:
           paths: ["py_rpautom"]
+          options:
+            docstring_style: google
+            docstring_options:
+              returns_multiple_items: false
   - search
 
 hooks:
