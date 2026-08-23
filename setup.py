@@ -10,15 +10,15 @@ with open(os.path.join(base_dir, 'README.md'), encoding='utf8') as f:
 setuptools.setup(
     name='py-rpautom',
     version='0.3.0b0',
-    author='aranseiki',
-    author_email='allanoa@5t2tj5.onmicrosoft.com',
+    author='arumeidaaran',
+    author_email='arumeidaaran@outlook.com',
     description='Conjunto de utilitários para automação de processos.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://aranseiki.github.io/py-rpautom/',
+    url='https://arumeidaaran.github.io/py-rpautom/',
     packages=setuptools.find_packages(),
     project_urls={
-        'Py-RPAutom': 'https://github.com/aranseiki/py-rpautom/',
+        'Py-RPAutom': 'https://github.com/arumeidaaran/py-rpautom/',
     },
     classifiers=[
         'Framework :: Robot Framework :: Library',
