@@ -1,3 +1,12 @@
+"""Resolução do geckodriver a partir da tabela de suporte da Mozilla.
+
+O Firefox não publica catálogo de downloads: a compatibilidade entre
+geckodriver e navegador consta de uma tabela na documentação, que
+este módulo lê e interpreta para descobrir a versão correta antes de
+montar a URL de download. Módulo interno, usado por ``base``.
+"""
+
+
 from typing import Union
 
 from requests import Response
@@ -12,6 +21,37 @@ def _coletar_metadata_geckodriver(
     proxies: dict[str, str] = None,
     autenticacao: Union[None, list] = None,
 ) -> dict[str, str]:
+    """Descobre a versão do geckodriver compatível com o Firefox instalado.
+
+    O Firefox segue uma lógica própria: em vez de um catálogo de
+    downloads, a Mozilla publica uma tabela de compatibilidade que
+    indica a faixa de versões do navegador atendida por cada
+    geckodriver. Esta função lê essa tabela, procura a faixa que
+    contém a versão instalada e monta a URL de download no repositório
+    de releases. Firefox mais novo que a tabela recebe o geckodriver
+    mais recente.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador, usado nas mensagens de erro.
+        webdriver_url: Endereço da tabela de compatibilidade.
+        webdriver_plataforma: Identificador da plataforma
+            (ex.: 'win64').
+        header_request: Cabeçalhos HTTP da consulta.
+        versao_navegador_sem_minor: Linha de versão do Firefox
+            instalado.
+        proxies: Proxies por protocolo.
+        autenticacao: Credenciais de autenticação básica, quando
+            necessárias.
+
+    Retorna:
+        dict[str, str]: Metadados do pacote, com ``nome_arquivo_zip``,
+            ``versao``, ``tamanho`` e ``url_arquivo_zip``.
+
+    Exceções:
+        ValueError: Quando a consulta retorna conteúdo vazio.
+        RuntimeError: Quando a tabela não traz nenhuma versão.
+        SystemError: Quando nenhuma versão compatível é encontrada.
+    """
     from re import search
 
     from py_rpautom._navegadores.base import _coletar_lista_webdrivers_online
@@ -112,6 +152,21 @@ def _coletar_metadata_geckodriver(
 
 
 def _coletar_nome_webdriver_firefox(nome_navegador: str) -> str:
+    """Devolve o nome do driver do Firefox e valida o navegador informado.
+
+    Fornece o nome que dá origem à subpasta local do driver e recusa
+    navegadores que não sejam Firefox, evitando o download do driver
+    errado por engano de digitação.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador a validar.
+
+    Retorna:
+        str: 'geckodriver'.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é Firefox.
+    """
     if not nome_navegador.upper().__contains__('FIREFOX'):
         raise SystemError(
             f'Navegador {nome_navegador} incorreto para GeckoDriver'
@@ -125,6 +180,22 @@ def _coletar_nome_webdriver_firefox(nome_navegador: str) -> str:
 def _coletar_metadata_requisicao_geckodriver(
     nome_navegador: str
 ) -> dict[str, str]:
+    """Devolve o endereço e os cabeçalhos da tabela de compatibilidade.
+
+    Concentra a URL do documento de suporte do geckodriver e os
+    cabeçalhos aceitos pelo servidor. Como a compatibilidade do Firefox
+    é publicada em documentação, e não em catálogo de downloads, é
+    desse endereço que sai toda a informação de versão.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador a validar.
+
+    Retorna:
+        dict[str, str]: Dicionário com as chaves ``url`` e ``headers``.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é Firefox.
+    """
     if not nome_navegador.upper().__contains__('FIREFOX'):
         raise SystemError(
             f'Navegador {nome_navegador} incorreto para GeckoDriver'
@@ -151,6 +222,16 @@ def _coletar_metadata_requisicao_geckodriver(
 
 
 def _configuracao_silenciosa_firefox() -> None:
+    """Devolve o nível de log usado para silenciar o Firefox.
+
+    O Firefox não aceita as mesmas opções do Chromium: o silenciamento
+    é feito ajustando o nível de log no objeto de opções, e não por
+    argumentos de linha de comando. Devolver ``None`` é justamente o
+    que desativa a saída de log do driver.
+
+    Retorna:
+        None: Nível de log aplicado ao objeto de opções do Firefox.
+    """
     options_webdriver_local = None
 
     return options_webdriver_local
@@ -159,6 +240,25 @@ def _configuracao_silenciosa_firefox() -> None:
 def _tratar_lista_geckodriver(
     response_http_webdrivers: Response
 ) -> list[str]:
+    """Converte a tabela de compatibilidade do geckodriver em dados usáveis.
+
+    A tabela vem embutida em uma página cujo HTML nem sempre fecha as
+    tags corretamente, o que impede um parse direto. Esta função
+    higieniza o HTML, repara as tags de tabela, extrai os textos em
+    ordem e infere de cada linha a versão do geckodriver e a faixa de
+    versões do Firefox que ela atende. As linhas saem da mais recente
+    para a mais antiga.
+
+    Parâmetros:
+        response_http_webdrivers: Resposta HTTP com a página da tabela.
+
+    Retorna:
+        list[tuple[str, int, int]]: Uma tupla por linha, com a versão do
+            geckodriver e as versões mínima e máxima do Firefox atendidas.
+
+    Exceções:
+        RuntimeError: Quando nenhuma versão é encontrada na tabela.
+    """
     from re import DOTALL, IGNORECASE, search, sub
 
     from requests_html import HTML
@@ -297,6 +397,21 @@ def _tratar_lista_geckodriver(
 
 
 def _parse_major_firefox(valor: str) -> int:
+    """Extrai o número principal de versão do Firefox de um texto livre.
+
+    As células da tabela de compatibilidade nem sempre trazem um número
+    limpo: aparecem faixas, notas e o valor 'n/a'. Esta função reduz o
+    texto ao número que interessa e adota extremos seguros quando não
+    há número — zero para o limite inferior, um valor alto para o
+    superior —, de modo que a faixa continue utilizável na comparação.
+
+    Parâmetros:
+        valor: Texto da célula da tabela.
+
+    Retorna:
+        int: Versão principal encontrada; ``0`` quando o texto indica
+            'n/a'; ``9999`` quando nenhum número é reconhecido.
+    """
     from re import search
 
 

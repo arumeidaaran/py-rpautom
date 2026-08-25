@@ -41,22 +41,21 @@ __all__ = [
 
 
 def _aplicacao(estilo_aplicacao: str = 'win32') -> Application:
-    """Inicia e retorna um objeto do tipo Application da \
-        biblioteca pywinauto e define APP e \
-        ESTILO_APLICACAO como constantes globais.
+    """Cria o objeto ``Application`` do pywinauto e o guarda globalmente.
 
-    Parameters:
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
+    Função interna que define a fundação de toda a automação desktop:
+    escolhe o backend de acesso à interface e registra o objeto nas
+    variáveis globais ``APP`` e ``ESTILO_APLICACAO``, consultadas pelas
+    demais funções do módulo. É chamada por ``iniciar_app``,
+    ``conectar_app`` e ``retornar_janelas_disponiveis``.
 
-    Returns:
-        Retorna o objeto do tipo Application manipulável.
+    Parâmetros:
+        estilo_aplicacao: Backend de automação: 'win32' para aplicações
+            clássicas do Windows, 'uia' para aplicações modernas.
 
-    Raises:
-        ...
-
-    Examples:
-        ...
+    Retorna:
+        Application: Objeto do pywinauto pronto para iniciar ou conectar
+            um processo.
     """
 
     # define app como global
@@ -77,24 +76,20 @@ def _conectar_app(
     tempo_espera: int = 60,
     estilo_aplicacao: str = 'win32',
 ) -> int:
-    """Torna um processo do sistema já existente como um objeto do tipo \
-        Application manipulável.
+    """Vincula o objeto ``Application`` a um processo já em execução.
 
-    Parameters:
-        pid: PID do processo existente.
-        tempo_espera: Tempo limite em segundos para o início do processo.
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
+    Função interna que faz a conexão de fato: recria o objeto no backend
+    informado e anexa-o ao processo do PID indicado, aguardando até o
+    tempo limite caso a aplicação ainda esteja subindo. É a base de
+    ``conectar_app`` e de ``encerrar_app``.
 
-    Returns:
-        Retorna int, sendo o PID do processo manipulado.
+    Parâmetros:
+        pid: PID do processo já em execução.
+        tempo_espera: Tempo máximo de espera pela aplicação, em segundos.
+        estilo_aplicacao: Backend de automação: 'win32' ou 'uia'.
 
-    Raises:
-        ...
-
-
-    Examples:
-        ...
+    Retorna:
+        Application: Objeto do pywinauto vinculado ao processo.
     """
 
     # define app como global
@@ -120,23 +115,26 @@ def _conectar_app(
 def _localizar_elemento(
     caminho_campo: dict,
 ) -> Application:
-    """Retorna se o caminho de elementos informado existe no objeto do \
-        tipo Application sendo manipulado.
+    """Percorre a árvore de elementos e devolve o controle apontado.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    Função interna que traduz o dicionário de caminho — a estrutura
+    ``window`` / ``child_window`` aninhada usada em todo o módulo — na
+    sequência de chamadas do pywinauto que desce da janela até o
+    elemento desejado. Em cada nível considera os identificadores
+    ``title``, ``control_type``, ``auto_id``, ``best_match`` e
+    ``session``, e continua descendo enquanto houver ``child_window``.
+    É o mecanismo compartilhado por praticamente todas as funções
+    públicas do módulo.
 
-    Returns:
-        Retorna booleano, `True` caso o caminho do elemento na aplicação \
-            exista, `False` caso o caminho do elemento na aplicação \
-            não exista.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        Application: Wrapper do elemento localizado, pronto para receber
+            ações como clique, digitação e leitura.
 
-    Examples:
-        ...
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
     """
 
     # importa app para o escopo da função
@@ -204,24 +202,24 @@ def _localizar_elemento(
 
 
 def ativar_foco(nome_janela: str) -> bool:
-    """Ativa a janela de um objeto do tipo `Application` deixando-a com foco.
+    """Traz uma janela para frente e lhe dá o foco do teclado.
 
-    Parameters:
-        nome_janela: O nome de uma janela já manipulável.
+    Cliques e digitações simulados chegam à janela que está em foco, e
+    não necessariamente àquela que o código pretende manipular — por
+    isso ativar o foco costuma ser o passo anterior a qualquer
+    interação, sobretudo depois que outra aplicação roubou a tela.
+    Localiza a janela pelo título, sem exigir o dicionário de caminho.
 
-    Returns:
-        Retorna booleano, `True` caso o foco tenha sucesso, \
-        `False` caso o foco não tenha sucesso.
+    Parâmetros:
+        nome_janela: Título exato da janela a ser focada.
 
-    Raises:
-        ...
+    Retorna:
+        bool: ``True`` se a janela foi focada, ``False`` se não foi
+            encontrada ou o foco falhou.
 
-    Examples:
-        >>> ativar_foco(nome_janela='Untitled - Notepad')
+    Exemplos:
+        >>> ativar_foco(nome_janela='Sem título - Bloco de Notas')
         True
-
-        >>> ativar_foco(nome_janela='aaaaa')
-        False
     """
 
     # importa app para o escopo da função
@@ -244,27 +242,31 @@ def botao_esta_marcado(
     caminho_campo: dict,
     opcao_verificacao: str = 'IS_CHECKED',
 ) -> bool:
-    """Verifica se o estado de um botão está como marcado ou não.
+    """Verifica se uma caixa de seleção ou botão de opção está marcado.
 
-    Parameters:
-        caminho_campo: Caminho do elemento. Precisa ser do tipo dict.
-        opcao_verificacao: O nome do estado do elemento que se quer \
-            verificar. Aceita as opções IS_CHECKED, GET_CHECK_STATE \
-            e GET_SHOW_STATE em tipo string.
+    Permite ler o estado atual antes de agir, evitando o erro clássico
+    de clicar em uma caixa já marcada e acabar desmarcando-a. As três
+    opções de verificação existem porque componentes diferentes expõem
+    o estado de formas distintas: se uma não responder, vale testar
+    outra.
 
-    Returns:
-        Retorna booleano, `True` caso o botão estiver marcado, \
-        `False` caso o botão não estiver marcado.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
+        opcao_verificacao: Forma de leitura do estado: 'IS_CHECKED',
+            'GET_CHECK_STATE' ou 'GET_SHOW_STATE'.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` se o elemento está marcado, ``False`` caso
+            contrário.
 
-        ValueError: `opcao_verificacao` precisa ser do tipo str.
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é dicionário, quando
+            ``opcao_verificacao`` não é texto, ou quando a opção
+            informada não é uma das três aceitas.
 
-        ValueError: \
-            Valores permitidos para `opcao_verificacao`: \
-            get_check_state, GET_SHOW_STATE, is_checked.
-
+    Exemplos:
+        >>> botao_esta_marcado(caminho_campo=caminho_checkbox)
+        False
     """
 
     if isinstance(caminho_campo, dict) is False:
@@ -292,38 +294,33 @@ def botao_esta_marcado(
 
 
 def capturar_imagem(caminho_campo: dict, coordenadas: tuple = None) -> bytes:
-    r"""
-    Captura uma imagem do estado atual do elemento
-    informado e retorna a imagem em bytes.
+    """Captura a imagem de um elemento da tela e a devolve em bytes.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação
-            sendo manipulada.
-        coordenadas: fixar valor da posição do elemento. Aceita as
-            posições na seguinte ordem: esquerda, cima, direita, baixo.
+    Fotografa apenas o elemento indicado, não a tela inteira, o que
+    gera evidências mais objetivas e arquivos menores. As coordenadas
+    permitem recortar uma região específica dentro do elemento — útil
+    para isolar um trecho de tabela ou um selo de status. Devolve os
+    bytes crus, que podem ser gravados com
+    ``python_utils.criar_arquivo_texto`` no modo binário ou enviados
+    diretamente a um serviço de OCR.
 
-    Returns:
-        Retorna o valor da imagem em tipo bytes.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
+        coordenadas: Recorte a capturar, na ordem esquerda, cima,
+            direita, baixo. ``None`` captura o elemento inteiro.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        bytes: Conteúdo da imagem capturada.
 
-        ValueError: `coordenadas` precisa ser do tipo tuple.
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é dicionário, quando
+            ``coordenadas`` não é tupla, ou quando a tupla não possui
+            exatamente 4 posições.
 
-        ValueError: `coordenadas` precisa conter 4 posições.
-
-    Examples:
-        >>> capturar_imagem(
-                caminho_campo=arvore_do_elemento,
-                coordenadas=(
-                    posicao_esquerda,
-                    posicao_cima,
-                    posicao_direita,
-                    posicao_baixo
-                )
-            )
-        b'%%&%%&%%&%%&%%&%%&%%&%%&%%&%Jq\xa1\xbc\xcc\xc7\xad\x81K%&%%
-        &%%&%%&%%&%%&%%&%%&%%&%%&%%&%:a\x7f\x8'
+    Exemplos:
+        >>> imagem = capturar_imagem(caminho_campo=caminho_tabela)
+        >>> type(imagem)
+        <class 'bytes'>
     """
 
     # Validar o tipo da varivavel
@@ -372,35 +369,30 @@ def capturar_imagem(caminho_campo: dict, coordenadas: tuple = None) -> bytes:
 def capturar_propriedade_elemento(
     caminho_campo: dict,
 ) -> dict[str, Union[str, int, bool, list]]:
-    """Captura as propriedades do elemento informado.
+    """Devolve todas as propriedades conhecidas de um elemento.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    É a principal ferramenta de investigação do módulo: mostra de uma
+    vez classe, textos, posição na tela, visibilidade e se o elemento
+    está habilitado. Serve tanto para descobrir por qual identificador
+    localizar um elemento durante o desenvolvimento quanto para tomar
+    decisões em tempo de execução — a chave ``rectangle`` fornece as
+    coordenadas usadas por ``simular_clique`` e ``mover_mouse``.
 
-    Returns:
-        Retorna um dicionário contendo string na chave, e um dos valores \
-            a seguir como valor: str, int, bool ou list.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        dict: Propriedades do elemento, entre elas ``class_name``,
+            ``texts``, ``rectangle``, ``is_visible``, ``is_enabled`` e
+            ``automation_id``.
 
-    Examples:
-        >>> capturar_propriedade_elemento(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...             'child_window': {
-        ...                 'title': 'DesktopWindowXamlSource',
-        ...                 'best_match': 'Windows.UI.Composition.DesktopWindowContentBridge2',
-        ...                 'child_window': {
-        ...                     'best_match': 'Windows.UI.Input.InputSite.WindowClass2',
-        ...                 }
-        ...             }
-        ...         }
-        ...     }
-        ... )
-        {'class_name': 'Windows.UI.Input.InputSite.WindowClass', 'friendly_class_name': 'Windows.UI.Input.InputSite.WindowClass', 'texts': [''], 'control_id': 0, 'rectangle': <RECT L961, T562, R961, B562>, 'is_visible': True, 'is_enabled': True, 'control_count': 0, 'style': 1342177280, 'exstyle': 0, 'user_data': 0, 'context_help_id': 0, 'fonts': [<LOGFONTW 'MS Shell Dlg' -13>], 'client_rects': [<RECT L0, T0, R0, B0>], 'is_unicode': True, 'menu_items': [], 'automation_id': ''}
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
+
+    Exemplos:
+        >>> propriedades = capturar_propriedade_elemento(caminho_campo)
+        >>> propriedades['is_enabled']
+        True
     """
 
     # Validar o tipo da varivavel
@@ -417,35 +409,27 @@ def capturar_propriedade_elemento(
 
 
 def capturar_texto(caminho_campo: dict) -> list[str]:
-    """Captura o texto de um elemento dentro de um objeto do tipo Application.
+    """Lê o texto exibido por um elemento da aplicação.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    Devolve uma lista porque um mesmo controle pode conter várias
+    linhas — uma caixa de texto com múltiplas linhas ou uma lista
+    devolvem um item por linha. Para um rótulo ou botão comum, o texto
+    está na primeira posição. É a função de leitura mais usada do
+    módulo, tanto para extrair dados quanto para conferir mensagens da
+    aplicação.
 
-    Returns:
-        Retorna uma lista de strings, sendo o valor capturado do elemento \
-            informado.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        list[str]: Texto do elemento, um item por linha.
 
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
 
-    Examples:
-        >>> capturar_texto(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Windows Powershell Main Window',
-        ...             'child_window': {
-        ...                 'title': 'Windows Powershell Main Menu',
-        ...                 'child_window': {
-        ...                     'title': 'File',
-        ...                 }
-        ...             }
-        ...         }
-        ...     },
-        ... )
-        ['File']
+    Exemplos:
+        >>> capturar_texto(caminho_campo=caminho_rotulo)
+        ['Arquivo']
     """
 
     if isinstance(caminho_campo, dict) is False:
@@ -467,38 +451,32 @@ def clicar(
     performar: bool = False,
     indice: int = None,
 ) -> bool:
-    """Clica em um elemento dentro de um objeto do tipo Application.
+    """Clica em um elemento da aplicação.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        performar: Ativa clique físico direto no elemento informado.
+    Oferece dois modos, e a escolha entre eles resolve boa parte dos
+    problemas de automação desktop: o clique padrão envia a mensagem de
+    clique diretamente ao controle, funcionando mesmo com a janela
+    minimizada ou coberta; o modo ``performar`` move o ponteiro e clica
+    de verdade, necessário em componentes que só reagem a eventos reais
+    do mouse. O índice permite alcançar um filho específico quando o
+    caminho aponta para um grupo de elementos.
 
-    Returns:
-        Retorna `True` caso chegue ao final do clique.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
+        performar: Quando ``True``, executa clique físico com o
+            ponteiro; quando ``False``, envia o clique ao controle.
+        indice: Posição do elemento filho a ser clicado, contada a
+            partir de 0. ``None`` clica no próprio elemento.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `performar` precisa ser do tipo boleano.'
-        ValueError: `indice` precisa ser do tipo int.
+    Retorna:
+        bool: ``True`` quando o clique é executado.
 
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é dicionário,
+            ``performar`` não é booleano ou ``indice`` não é inteiro.
 
-    Examples:
-        >>> clicar(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Windows Powershell Main Window',
-        ...             'child_window': {
-        ...                 'title': 'Windows Powershell Main Menu',
-        ...                 'child_window': {
-        ...                     'title': 'File',
-        ...                 }
-        ...             }
-        ...         }
-        ...     },
-        ...     indice=0,
-        ...     performar=True,
-        ... )
+    Exemplos:
+        >>> clicar(caminho_campo=caminho_botao, performar=True)
         True
     """
 
@@ -529,36 +507,29 @@ def clicar(
 
 
 def coletar_arvore_elementos(caminho_elemento: dict) -> list[str]:
-    """Lista um elemento dentro de um objeto do tipo Application e retorna \
-        o valor coletado.
+    """Lista a estrutura de elementos existente sob o caminho informado.
 
-    Parameters:
-        caminho_elemento: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    É a função de exploração usada durante o desenvolvimento: revela os
+    elementos filhos disponíveis e, principalmente, os identificadores
+    que devem ser usados para alcançá-los — exatamente o que se precisa
+    para montar o dicionário de caminho das demais funções. Cada linha
+    do retorno traz um trecho da árvore de controles da aplicação. Não
+    costuma ser usada em produção.
 
-    Returns:
-        Retorna uma lista de strings, sendo o valor capturado do elemento \
-            informado.
+    Parâmetros:
+        caminho_elemento: Caminho do elemento a partir do qual listar,
+            em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_elemento` precisa ser do tipo dict.
+    Retorna:
+        list[str]: Linhas da árvore de controles, incluindo classes,
+            textos, coordenadas e sugestões de identificação.
 
-    Examples:
-        >>> coletar_arvore_elementos(
-        ...     caminho_elemento={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...             'child_window': {
-        ...                 'title': 'DesktopWindowXamlSource',
-        ...                 'best_match': 'Windows.UI.Composition.DesktopWindowContentBridge2',
-        ...                 'child_window': {
-        ...                     'best_match': 'Windows.UI.Input.InputSite.WindowClass2',
-        ...                 }
-        ...             }
-        ...         }
-        ...     }
-        ... )
-        ['Control Identifiers:', '', "Windows.UI.Input.InputSite.WindowClass - ''    (L1898, T603, R1898, B603)", "['Windows.UI.Input.InputSite.WindowClass']", 'child_window(class_name="Windows.UI.Input.InputSite.WindowClass")', '']
+    Exceções:
+        ValueError: Quando ``caminho_elemento`` não é um dicionário.
+
+    Exemplos:
+        >>> for linha in coletar_arvore_elementos(caminho_janela):
+        ...     print(linha)
     """
 
     # importa recursos do módulo io
@@ -586,32 +557,26 @@ def coletar_arvore_elementos(caminho_elemento: dict) -> list[str]:
 
 
 def coletar_dado_selecionado(caminho_campo: dict) -> str:
-    """Coleta a opção atualmente selecionada em um elemento de seleção de \
-        um objeto do tipo Application.
+    """Lê a opção atualmente escolhida em um campo de seleção.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    Aplica-se a listas suspensas e caixas de combinação: devolve o
+    texto que está visível no campo, e não a lista de opções — para
+    essa, use ``coletar_dados_selecao``. Serve para conferir se uma
+    seleção anterior surtiu efeito e para capturar o valor padrão antes
+    de alterá-lo.
 
-    Returns:
-        Retorna uma string, sendo o valor capturado do elemento informado.
+    Parâmetros:
+        caminho_campo: Caminho do campo de seleção, em dicionário
+            aninhado.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        str: Texto da opção selecionada.
 
-    Examples:
-        >>> coletar_dado_selecionado(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Character Map',
-        ...             'child_window': {
-        ...                 'title': 'Font :',
-        ...                 'control_type': 'ComboBox',
-        ...                 'auto_id': '105',
-        ...             }
-        ...         }
-        ...     },
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
+
+    Exemplos:
+        >>> coletar_dado_selecionado(caminho_campo=caminho_combo_fonte)
         'Arial'
     """
 
@@ -631,21 +596,26 @@ def coletar_dado_selecionado(caminho_campo: dict) -> str:
 
 
 def coletar_dados_selecao(caminho_campo: dict) -> str:
-    """Coleta todas as opções disponíveis para seleção em um elemento de \
-        seleção de um objeto do tipo Application.
+    """Lista todas as opções disponíveis em um campo de seleção.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
+    Permite validar que a opção desejada existe antes de tentar
+    selecioná-la e descobrir a grafia exata que a aplicação usa —
+    ``selecionar_em_campo_selecao`` exige o texto idêntico ao da lista.
+    Também serve para percorrer todas as opções de um filtro.
 
-    Returns:
-        Retorna uma string, sendo o valor capturado do elemento informado.
+    Parâmetros:
+        caminho_campo: Caminho do campo de seleção, em dicionário
+            aninhado.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        list[str]: Texto de cada opção disponível, na ordem da lista.
 
-    Examples:
-        ...
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
+
+    Exemplos:
+        >>> coletar_dados_selecao(caminho_campo=caminho_combo_uf)
+        ['SP', 'RJ', 'MG']
     """
 
     # define estático como falso para trabalhar com elemento dinâmico
@@ -664,48 +634,26 @@ def coletar_dados_selecao(caminho_campo: dict) -> str:
 
 
 def coletar_situacao_janela(caminho_janela: dict) -> str:
-    """Coleta a situação do estado atual de uma janela de um objeto do tipo Application.
+    """Informa se a janela está normal, minimizada ou maximizada.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    Traduz o código de estado do Windows para um texto legível. Serve
+    para decidir se é preciso restaurar ou maximizar antes de
+    interagir: janelas minimizadas não recebem cliques físicos, e o
+    layout de uma janela maximizada pode diferir do layout restaurado.
 
-    Returns:
-        Retorna uma string, sendo um dos valores a seguir: 'normal', 'minimizado', 'maximizado' e 'não identificado'.
+    Parâmetros:
+        caminho_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        str: 'normal', 'minimizado', 'maximizado' ou 'não identificado'
+            quando o estado não corresponde a nenhum dos três.
 
-    Examples:
-        #### Validação com a janela restaurada no momento da execução do comando
-        >>> coletar_situacao_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
-        'normal'
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
 
-        #### Validação com a janela maximizada no momento da execução do comando
-        >>> coletar_situacao_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exemplos:
+        >>> coletar_situacao_janela(caminho_janela=caminho_bloco_notas)
         'maximizado'
-
-        #### Validação com a janela minimizaa no momento da execução do comando
-        >>> coletar_situacao_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
-        'minimizado'
     """
 
     # importa app para o escopo da função
@@ -746,27 +694,26 @@ def conectar_app(
     tempo_espera: int = 60,
     estilo_aplicacao: str = 'win32',
 ) -> int:
-    """Torna um processo do sistema já existente como um objeto do tipo \
-        Application manipulável.
+    """Assume o controle de uma aplicação que já está em execução.
 
-    Parameters:
-        pid: PID do processo existente.
-        tempo_espera: Tempo limite em segundos para o início do processo.
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
+    Alternativa a ``iniciar_app`` para os casos em que o programa não
+    deve ser aberto pelo robô: um sistema que fica aberto o dia todo,
+    uma janela criada por outra aplicação, um pop-up do navegador.
+    Obtenha o PID com ``python_utils.coletar_pid``. A partir daqui, as
+    demais funções do módulo operam sobre essa aplicação.
 
-    Returns:
-        Retorna int, sendo o PID do processo manipulado.
+    Parâmetros:
+        pid: PID do processo já em execução.
+        tempo_espera: Tempo máximo de espera pela aplicação, em
+            segundos.
+        estilo_aplicacao: Backend de automação: 'win32' para aplicações
+            clássicas do Windows, 'uia' para aplicações modernas.
 
-    Raises:
-        ...
+    Retorna:
+        int: PID da aplicação agora sob controle da automação.
 
-    Examples:
-        >>> conectar_app(
-        ...     pid=notepad_pid,
-        ...     tempo_espera=10,
-        ...     estilo_aplicacao='win32',
-        ... )
+    Exemplos:
+        >>> conectar_app(pid=33144, estilo_aplicacao='win32')
         33144
     """
 
@@ -797,34 +744,29 @@ def digitar(
     caminho_campo: dict,
     valor: str,
 ) -> str:
-    """Digita em um elemento dentro de um objeto do tipo Application.
+    """Escreve um texto em um campo de edição da aplicação.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        valor: O valor a ser digitado.
+    Substitui todo o conteúdo do campo de uma vez, em vez de acrescentar
+    ao que já existe — não é preciso limpá-lo antes. O texto é entregue
+    diretamente ao controle, sem simular teclas, o que é rápido e
+    confiável; campos com máscara ou validação a cada tecla podem exigir
+    ``simular_digitacao``. Ao final devolve o conteúdo do campo, o que
+    permite confirmar a escrita.
 
-    Returns:
-        Retorna str, sendo o valor do campo após a inserção do valor \
-            informado.
+    Parâmetros:
+        caminho_campo: Caminho do campo de edição, em dicionário
+            aninhado.
+        valor: Texto a ser escrito.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        str: Conteúdo do campo após a escrita, em representação de lista
+            de linhas.
 
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
 
-    Examples:
-        >>> digitar(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Character Map',
-        ...             'child_window': {
-        ...                 'control_type': 'Edit',
-        ...                 'auto_id': '104',
-        ...             }
-        ...         }
-        ...     },
-        ...     valor='ABCDE',
-        ... )
+    Exemplos:
+        >>> digitar(caminho_campo=caminho_campo_busca, valor='ABCDE')
         "['ABCDE']"
     """
 
@@ -852,31 +794,26 @@ def encerrar_app(
     forcar: bool = False,
     tempo_espera: int = 60,
 ) -> bool:
-    """Encerra um processo do sistema de um objeto do tipo Application \
-        sendo manipulado.
+    """Fecha a aplicação correspondente ao PID informado.
 
-    Parameters:
-        pid: PID do processo existente.
-        forcar: Força o encerramento do processo.
-        tempo_espera: Tempo limite em segundos para a tentativa de \
-            encerramento do processo.
+    O modo suave pede que o programa se encerre, dando-lhe a chance de
+    salvar e liberar recursos; o modo forçado derruba o processo
+    imediatamente, perdendo o que não foi gravado. Use o forçado apenas
+    quando a aplicação travou. Chamar ao final de cada execução evita o
+    acúmulo de processos órfãos entre rodadas do robô.
 
-    Returns:
-        Retorna booleano, `True` caso o processo seja encerrado \
-            com sucesso, `False` caso o processo não seja \
-            encerrado com sucesso
+    Parâmetros:
+        pid: PID do processo a ser encerrado.
+        forcar: Quando ``True``, derruba o processo imediatamente;
+            quando ``False``, solicita o encerramento normal.
+        tempo_espera: Tempo máximo de espera pela conexão ao processo,
+            em segundos.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ...
+    Retorna:
+        bool: ``True`` quando o encerramento é solicitado.
 
-
-    Examples:
-        >>> encerrar_app(
-        ...     pid=39440,
-        ...     forcar=True,
-        ...     tempo_espera=10,
-        ... )
+    Exemplos:
+        >>> encerrar_app(pid=39440, forcar=True)
         True
     """
 
@@ -898,29 +835,22 @@ def encerrar_app(
 
 
 def esta_com_foco(nome_janela: str) -> bool:
-    """Verifica se a janela de um objeto do tipo Application está com foco.
+    """Informa se a janela indicada está em primeiro plano.
 
-    Parameters:
-        nome_janela: O nome de uma janela já manipulável.
+    O foco determina para onde vão as teclas e os cliques físicos.
+    Consultar antes de simular digitação evita o erro difícil de
+    diagnosticar em que o texto acaba digitado na janela errada. Para
+    corrigir a situação, use ``ativar_foco``.
 
-    Returns:
-        Retorna booleano, `True` caso a janela estiver com foco, \
-        `False` caso a janela não estiver com foco.
+    Parâmetros:
+        nome_janela: Título exato da janela a ser verificada.
 
-    Raises:
-        ...
+    Retorna:
+        bool: ``True`` se a janela está com foco, ``False`` caso
+            contrário.
 
-    Examples:
-        #### Validação sem foco na janela no momento da execução do comando
-        >>> esta_com_foco(
-        ...     nome_janela='Untitled - Notepad',
-        ... )
-        False
-
-        #### Validação com foco na janela no momento da execução do comando
-        >>> esta_com_foco(
-        ...     nome_janela='Untitled - Notepad',
-        ... )
+    Exemplos:
+        >>> esta_com_foco(nome_janela='Sem título - Bloco de Notas')
         True
     """
 
@@ -935,39 +865,23 @@ def esta_com_foco(nome_janela: str) -> bool:
 
 
 def esta_visivel(nome_janela: dict) -> str:
-    """Verifica se a janela de um objeto do tipo Application está visível.
+    """Informa se a janela está visível na tela.
 
-    Parameters:
-        nome_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    Simplifica ``coletar_situacao_janela`` para a pergunta que
+    normalmente interessa: dá para interagir com esta janela agora?
+    Janelas normais e maximizadas contam como visíveis; minimizadas,
+    não. Quando o retorno indicar janela não visível, use
+    ``restaurar_janela`` antes de prosseguir.
 
-    Returns:
-        Retorna uma string, sendo um dos valores a seguir: 'visivel', \
-            'não visível', e 'não identificado'.
+    Parâmetros:
+        nome_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        ...
+    Retorna:
+        str: 'visivel', 'não visível' ou 'não identificado'.
 
-    Examples:
-        #### Validação com a janela restaurada no momento da execução do comando
-        >>> esta_visivel(
-        ...     nome_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exemplos:
+        >>> esta_visivel(nome_janela=caminho_bloco_notas)
         'visivel'
-
-        #### Validação com a janela minimizada no momento da execução do comando
-        >>> esta_visivel(
-        ...     nome_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
-        'não visível'
     """
 
     # coleta a situação atual da janela
@@ -989,26 +903,26 @@ def esta_visivel(nome_janela: dict) -> str:
 
 
 def fechar_janela(caminho_janela: dict) -> bool:
-    """Encerra uma janela de um objeto do tipo Application sendo manipulado.
+    """Fecha uma janela específica da aplicação.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    Age sobre uma janela apenas, não sobre o processo inteiro — é o
+    recurso para dispensar caixas de diálogo, avisos e janelas
+    auxiliares sem derrubar o sistema principal. Se a janela pedir
+    confirmação ao fechar, o pop-up permanece aberto e precisa ser
+    tratado em seguida. Para encerrar a aplicação toda, use
+    ``encerrar_app``.
 
-    Returns:
-        Retorna booleano, `True`.
+    Parâmetros:
+        caminho_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        ValueError: `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` quando o fechamento é solicitado.
 
-    Examples:
-        >>> fechar_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
+
+    Exemplos:
+        >>> fechar_janela(caminho_janela=caminho_dialogo)
         True
     """
 
@@ -1038,36 +952,36 @@ def iniciar_app(
     inverter: bool = False,
     ocioso: bool = False,
 ) -> int:
-    """Inicia um processo do sistema de um objeto do tipo Application  sendo manipulado.
+    """Abre uma aplicação desktop e a coloca sob controle da automação.
 
-    Parameters:
-        executavel: Caminho da aplicação a ser manipulada.
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
-        esperar: Define, em uma tupla, a condição esperada pela \
-            aplicação, sendo o primeiro valor a condição esperada nos \
-            valores 'exists', 'visible', 'enabled', 'ready', ou 'active', \
-            e o segundo valor o tempo limite de espera em segundos.
-        inverter: `True` Aguarda a inicialização da aplicação \
-            ficar na condição informada, `False` aguarda a inicialização \
-            da aplicação ficar diferente da condição informada.
-        ocioso: Define se deve aguardar a inicialização da \
-            aplicação sair do ocioso. `True` para aguardar, \
-            `False` para não aguardar.
+    É o ponto de partida da automação desktop: executa o programa e,
+    em vez de devolver o controle de imediato, aguarda a janela atingir
+    a condição informada — proteção necessária porque uma aplicação
+    recém-iniciada leva algum tempo até responder. Devolve o PID, que
+    identifica essa instância nas demais funções. Escolher o backend
+    correto é decisivo: 'win32' para programas clássicos do Windows,
+    'uia' para aplicações modernas; na dúvida, teste os dois.
 
-    Returns:
-        Retorna int, sendo o PID do processo manipulado.
+    Parâmetros:
+        executavel: Caminho completo do programa a ser aberto, com os
+            argumentos de linha de comando, se houver.
+        estilo_aplicacao: Backend de automação: 'win32' ou 'uia'.
+        esperar: Tupla com a condição aguardada e o tempo limite em
+            segundos. A condição pode ser 'exists', 'visible',
+            'enabled', 'ready' ou 'active'. Vazia usa ('ready', 10).
+        inverter: Quando ``False``, aguarda a condição ocorrer; quando
+            ``True``, aguarda a condição deixar de valer.
+        ocioso: Quando ``True``, espera a aplicação sair do estado
+            ocioso antes de seguir.
 
-    Raises:
-        ...
+    Retorna:
+        int: PID do processo iniciado.
 
-    Examples:
+    Exemplos:
         >>> iniciar_app(
-        ...     executavel= 'C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2410.21.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe',
+        ...     executavel='notepad.exe',
         ...     estilo_aplicacao='uia',
         ...     esperar=('ready', 10),
-        ...     ocioso=False,
-        ...     inverter=True,
         ... )
         40944
     """
@@ -1119,25 +1033,26 @@ def iniciar_app(
 
 
 def janela_existente(pid, nome_janela) -> bool:
-    """Verifica se a janela de um objeto do tipo Application existe.
+    """Informa se a aplicação possui uma janela com o título indicado.
 
-    Parameters:
-        nome_janela: O nome de uma janela já manipulável.
-        pid: PID do processo existente.
+    Serve para descobrir em que ponto do fluxo a aplicação está: se o
+    pop-up de erro apareceu, se a tela de resultado já abriu, se o
+    diálogo de salvar surgiu. A comparação é exata — títulos que mudam
+    a cada execução, com data ou número de registro, não são
+    encontrados. Para conhecer os títulos disponíveis, use
+    ``retornar_janelas_disponiveis``.
 
-    Returns:
-        Retorna booleano, `True` caso a janela da aplicação exista, \
-            `False` caso a janela da aplicação não exista.
+    Parâmetros:
+        pid: PID do processo da aplicação.
+        nome_janela: Título exato da janela procurada.
 
-    Raises:
-        ...
+    Retorna:
+        bool: ``True`` se existe uma janela com esse título, ``False``
+            caso contrário.
 
-    Examples:
-        >>> janela_existente(
-        ...     pid=39440,
-        ...     nome_janela='Untitled - Notepad',
-        ... )
-        True
+    Exemplos:
+        >>> janela_existente(pid=39440, nome_janela='Erro')
+        False
     """
 
     # coleta a situação atual da janela
@@ -1158,23 +1073,29 @@ def localizar_diretorio_em_treeview(
     caminho_janela: dict,
     caminho_diretorio: str,
 ) -> bool:
-    """Localiza um diretório, seguindo a árvore de diretórios informada, \
-        dentro de um objeto TreeView do tipo Application.
+    r"""Navega até uma pasta em uma caixa de diálogo com árvore de diretórios.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
-        caminho_diretorio: Caminho da estrutura de diretórios a ser localizada.
+    Trata o caso específico das janelas antigas de "Procurar pasta", em
+    que a escolha é feita em uma árvore, e não em um campo de caminho.
+    Percorre a árvore até o diretório informado, clica nele e confirma
+    em OK, resolvendo em uma chamada uma navegação que exigiria vários
+    cliques. Nunca lança exceção: devolve ``False`` quando a navegação
+    falha.
 
-    Returns:
-        Retorna booleano, `True` caso a localização tenha sucesso, \
-            `False` caso a localização não tenha sucesso.
+    Parâmetros:
+        caminho_janela: Caminho da janela de diálogo, em dicionário
+            aninhado.
+        caminho_diretorio: Caminho da pasta a ser selecionada dentro da
+            árvore.
 
-    Raises:
-        ValueError: `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` se a pasta foi selecionada e confirmada,
+            ``False`` em caso de falha.
 
-    Examples:
-        ...
+    Exemplos:
+        >>> localizar_diretorio_em_treeview(caminho_dialogo,
+        ...                                 'Este Computador\Documentos')
+        True
     """
 
     try:
@@ -1201,39 +1122,25 @@ def localizar_elemento(
     caminho_campo: dict,
     estilo_aplicacao='win32',
 ) -> bool:
-    """Retorna se o caminho de elementos informado existe no objeto do \
-        tipo Application sendo manipulado.
+    """Verifica se um elemento existe na aplicação sob controle.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
+    Funciona como teste de presença antes de agir, evitando exceções ao
+    tentar clicar ou ler algo que ainda não apareceu. É também a forma
+    de conferir se o dicionário de caminho montado durante o
+    desenvolvimento realmente alcança o elemento pretendido.
 
-    Returns:
-        Retorna booleano, `True` caso o caminho do elemento na aplicação \
-            exista, `False` caso o caminho do elemento na aplicação \
-            não exista.
+    Parâmetros:
+        caminho_campo: Caminho do elemento, em dicionário aninhado.
+        estilo_aplicacao: Backend de automação: 'win32' ou 'uia'.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` se o elemento existe, ``False`` caso contrário.
 
-    Examples:
-        >>> localizar_elemento(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...             'child_window': {
-        ...                 'title': 'DesktopWindowXamlSource',
-        ...                 'best_match': 'Windows.UI.Composition.DesktopWindowContentBridge2',
-        ...                 'child_window': {
-        ...                     'best_match': 'Windows.UI.Input.InputSite.WindowClass2',
-        ...                 }
-        ...             }
-        ...         }
-        ...     },
-        ...     estilo_aplicacao='win32',
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
+
+    Exemplos:
+        >>> localizar_elemento(caminho_campo=caminho_botao_ok)
         True
     """
 
@@ -1253,27 +1160,26 @@ def localizar_elemento(
 
 
 def maximizar_janela(caminho_janela: dict) -> bool:
-    """Maximiza a janela de um objeto do tipo Application.
+    """Maximiza a janela da aplicação.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    Amplia a área útil, o que reduz a rolagem e evita que elementos
+    fiquem fora da tela — situação em que cliques físicos falham.
+    Também estabiliza as coordenadas entre execuções, importante para
+    ``simular_clique``, já que a posição dos elementos varia conforme o
+    tamanho da janela.
 
-    Returns:
-        Retorna booleano, `True` caso a ação de maximizar tenha sucesso, \
-        `False` caso a ação de maximizar não tenha sucesso.
+    Parâmetros:
+        caminho_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` se a janela foi maximizada, ``False`` em caso de
+            falha.
 
-    Examples:
-        >>> maximizar_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
+
+    Exemplos:
+        >>> maximizar_janela(caminho_janela=caminho_bloco_notas)
         True
     """
 
@@ -1298,27 +1204,25 @@ def maximizar_janela(caminho_janela: dict) -> bool:
 
 
 def minimizar_janela(caminho_janela: dict) -> bool:
-    """Miniminiza a janela de um objeto do tipo Application.
+    """Minimiza a janela da aplicação.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    Tira a janela da frente sem fechá-la, liberando a tela para outra
+    aplicação ou para o usuário. Atenção: janelas minimizadas não
+    recebem cliques físicos nem digitação simulada — antes de voltar a
+    interagir, use ``restaurar_janela``.
 
-    Returns:
-        Retorna booleano, `True` caso a ação de miniminizar tenha sucesso, \
-        `False` caso a ação de miniminizar não tenha sucesso.
+    Parâmetros:
+        caminho_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` se a janela foi minimizada, ``False`` em caso de
+            falha.
 
-    Examples:
-        >>> minimizar_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
+
+    Exemplos:
+        >>> minimizar_janela(caminho_janela=caminho_bloco_notas)
         True
     """
 
@@ -1343,21 +1247,28 @@ def minimizar_janela(caminho_janela: dict) -> bool:
 
 
 def mover_mouse(eixo_x: int, eixo_y: int) -> bool:
-    """Move o mouse para o ponto das coordenadas X e Y informadas.
+    """Move o ponteiro do mouse para as coordenadas indicadas.
 
-    Parameters:
-        eixo_x: valor int para a posição de coordenada X.
-        eixo_y: valor int para a posição de coordenada Y.
+    Posiciona o cursor sem clicar, o que basta para acionar menus e
+    dicas que se abrem ao passar o mouse. As coordenadas são absolutas
+    na tela, contadas do canto superior esquerdo — obtenha as de um
+    elemento pela chave ``rectangle`` de
+    ``capturar_propriedade_elemento``, já que valores fixos quebram
+    quando a resolução ou a posição da janela muda.
 
-    Returns:
-        Retorna booleano, `True` caso tenha sucesso ao mover o mouse, \
-        `False` caso não tenha sucesso ao mover o mouse.
+    Parâmetros:
+        eixo_x: Coordenada horizontal, em pixels.
+        eixo_y: Coordenada vertical, em pixels.
 
-    Raises:
-        ValueError: Coordenadas precisam ser do tipo inteiro .
+    Retorna:
+        bool: ``True`` se o ponteiro foi movido, ``False`` em caso de
+            falha.
 
-    Examples:
-        >>> mover_mouse(eixo_x=961, eixo_y=562,)
+    Exceções:
+        ValueError: Quando alguma coordenada não é um número inteiro.
+
+    Exemplos:
+        >>> mover_mouse(eixo_x=961, eixo_y=562)
         True
     """
 
@@ -1376,27 +1287,23 @@ def mover_mouse(eixo_x: int, eixo_y: int) -> bool:
 
 
 def restaurar_janela(caminho_janela: dict) -> bool:
-    """Restaura a janela de um objeto do tipo Application.
+    """Restaura a janela ao tamanho normal, saindo de minimizada ou maximizada.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
+    É o passo necessário para voltar a interagir com uma janela
+    minimizada, que não recebe cliques nem digitação. Também devolve a
+    janela ao tamanho intermediário quando ela está maximizada.
 
-    Returns:
-        Retorna booleano, `True` caso a ação de restaurar tenha sucesso, \
-        `False` caso a ação de restaurar não tenha sucesso.
+    Parâmetros:
+        caminho_janela: Caminho da janela, em dicionário aninhado.
 
-    Raises:
-        `caminho_janela` precisa ser do tipo dict.
+    Retorna:
+        bool: ``True`` quando a restauração é solicitada.
 
-    Examples:
-        >>> restaurar_janela(
-        ...     caminho_janela={
-        ...         'window': {
-        ...             'title': 'Untitled - Notepad',
-        ...         }
-        ...     }
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
+
+    Exemplos:
+        >>> restaurar_janela(caminho_janela=caminho_bloco_notas)
         True
     """
 
@@ -1424,26 +1331,24 @@ def retornar_janelas_disponiveis(
     pid: int,
     estilo_aplicacao='win32',
 ) -> list[str]:
-    """Retorna as janelas disponíveis em um objeto do tipo \
-        Application manipulável.
+    """Lista os títulos de todas as janelas abertas por uma aplicação.
 
-    Parameters:
-        pid: PID do processo existente.
-        estilo_aplicacao: Estilo de aplicação a ser manipulado, sendo \
-            'win32' e 'uia' os valores aceitos.
+    Mostra o que a aplicação tem na tela naquele instante, o que
+    resolve dois problemas frequentes: descobrir o título exato exigido
+    por ``ativar_foco`` e ``janela_existente``, e identificar pop-ups
+    inesperados que travaram o fluxo. Como reconecta a aplicação, pode
+    ser chamada mesmo antes de ``conectar_app``.
 
-    Returns:
-        Retorna uma lista de strings, sendo o valor capturado do PID \
-            informado.
+    Parâmetros:
+        pid: PID do processo da aplicação.
+        estilo_aplicacao: Backend de automação: 'win32' ou 'uia'.
 
-    Raises:
-        ...
+    Retorna:
+        list[str]: Título de cada janela aberta pelo processo.
 
-    Examples:
-        >>> retornar_janelas_disponiveis(
-        ...     pid=24728,
-        ...     estilo_aplicacao='uia'
-        ... )
+    Exemplos:
+        >>> retornar_janelas_disponiveis(pid=24728, estilo_aplicacao='uia')
+        ['Sem título - Bloco de Notas', 'Salvar como']
     """
 
     # importa app para o escopo da função
@@ -1478,25 +1383,31 @@ def retornar_janelas_disponiveis(
 
 
 def selecionar_aba(caminho_campo: dict, item: Union[str, int]) -> bool:
-    """Seleciona uma aba em um conjunto de abas de um objeto do tipo \
-        Application manipulável.
+    """Troca a aba ativa em um controle de abas.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        item: Valor em int ou em str da aba a ser selecionada.
+    Aplicações desktop distribuem os campos em abas, e os controles de
+    uma aba inativa existem na árvore mas não podem ser manipulados —
+    tentar preenchê-los falha silenciosamente ou gera erro. Esta função
+    faz a troca antes do preenchimento. A aba pode ser indicada pelo
+    título ou pela posição. Nunca lança exceção na troca em si: devolve
+    ``False``.
 
-    Returns:
-        Retorna booleano, `True` caso a aba seja selecionada com sucesso, \
-        `False` caso a aba não seja selecionada com sucesso.
+    Parâmetros:
+        caminho_campo: Caminho do controle de abas, em dicionário
+            aninhado.
+        item: Título da aba ou seu índice, contado a partir de 0.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `item` precisa ser do tipo int ou str.
-        ...
+    Retorna:
+        bool: ``True`` se a aba foi selecionada, ``False`` em caso de
+            falha.
 
-    Examples:
-        ...
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é dicionário ou
+            ``item`` não é texto nem inteiro.
+
+    Exemplos:
+        >>> selecionar_aba(caminho_campo=caminho_abas, item='Endereço')
+        True
     """
 
     from pywinauto.controls.common_controls import TabControlWrapper
@@ -1528,30 +1439,33 @@ def selecionar_em_campo_lista(
     selecionar: bool = True,
     performar: bool = False,
 ) -> bool:
-    """Seleciona um dado em um elemento de lista em um objeto do \
-        tipo Application.
+    """Marca ou desmarca um item em um campo de lista, pela posição.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        item: Valor em int da opção no campo de seleção \
-            a ser selecionada.
-        selecionar: Ativa seleção física direto no elemento informado.
-        performar: Ativa clique físico direto no elemento informado.
+    Diferentemente das listas suspensas, campos de lista mostram várias
+    linhas ao mesmo tempo e frequentemente aceitam seleção múltipla —
+    daí o parâmetro ``selecionar``, que permite tanto marcar quanto
+    desmarcar. O item é indicado pela posição, e não pelo texto: use
+    ``coletar_dados_selecao`` para descobrir o índice correto.
 
-    Returns:
-        Retorna booleano, `True` caso a opção no campo de seleção seja \
-            selecionada com sucesso, `False` caso a opção no campo de \
-            seleção não seja selecionada com sucesso.
+    Parâmetros:
+        caminho_campo: Caminho do campo de lista, em dicionário
+            aninhado.
+        item: Posição do item, contada a partir de 0.
+        selecionar: ``True`` marca o item, ``False`` desmarca.
+        performar: Quando ``True``, acrescenta um clique físico sobre o
+            item, para componentes que exigem interação real.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `item` precisa ser do tipo int.
-        ValueError: `selecionar` precisa ser do tipo bool.
-        ValueError: `performar` precisa ser do tipo bool.
+    Retorna:
+        bool: ``True`` se a operação foi executada, ``False`` em caso de
+            falha.
 
-    Examples:
-        ...
+    Exceções:
+        ValueError: Quando algum parâmetro é informado com tipo
+            diferente do esperado.
+
+    Exemplos:
+        >>> selecionar_em_campo_lista(caminho_campo=caminho_lista, item=2)
+        True
     """
 
     if isinstance(caminho_campo, dict) is False:
@@ -1582,39 +1496,28 @@ def selecionar_em_campo_lista(
 
 
 def selecionar_em_campo_selecao(caminho_campo: dict, item: str) -> str:
-    """Seleciona uma opção em um elemento de seleção em um objeto do \
-        tipo Application.
+    """Escolhe uma opção em uma lista suspensa, pelo texto.
 
-    Parameters:
-        caminho_campo: Caminho do elemento na estrutura da aplicação \
-            sendo manipulada.
-        item: Valor em str da opção no campo de seleção \
-            a ser selecionada.
+    Abre a lista, clica na opção cujo texto corresponde ao informado e
+    devolve o valor que ficou selecionado — o retorno permite confirmar
+    que a escolha foi aceita, sem precisar de uma leitura à parte. O
+    texto precisa ser idêntico ao da lista; consulte
+    ``coletar_dados_selecao`` em caso de dúvida.
 
-    Returns:
-        Retorna str, sendo o valor capturado do elemento informado após \
-            a opção selecionada.
+    Parâmetros:
+        caminho_campo: Caminho do campo de seleção, em dicionário
+            aninhado.
+        item: Texto da opção, exatamente como aparece na lista.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `item` precisa ser do tipo int.
-        ValueError: `selecionar` precisa ser do tipo bool.
-        ValueError: `performar` precisa ser do tipo bool.
+    Retorna:
+        str: Opção efetivamente selecionada após a operação.
 
-    Examples:
-        >>> selecionar_em_campo_selecao(
-        ...     caminho_campo={
-        ...         'window': {
-        ...             'title': 'Character Map',
-        ...             'child_window': {
-        ...                 'title': 'Font :',
-        ...                 'control_type': 'ComboBox',
-        ...                 'auto_id': '105',
-        ...             }
-        ...         }
-        ...     },
-        ...     item='Arial'
-        ... )
+    Exceções:
+        ValueError: Quando ``caminho_campo`` não é um dicionário.
+
+    Exemplos:
+        >>> selecionar_em_campo_selecao(caminho_campo=caminho_combo,
+        ...                             item='Arial')
         'Arial'
     """
 
@@ -1637,32 +1540,32 @@ def selecionar_em_campo_selecao(caminho_campo: dict, item: str) -> str:
 
 
 def selecionar_menu(caminho_janela: dict, caminho_menu: str) -> bool:
-    """Seleciona um item de menu conforme o caminho informado em um objeto \
-        do tipo Application.
+    """Aciona um item de menu percorrendo o caminho informado.
 
-    Parameters:
-        caminho_janela: Caminho da janela na estrutura da aplicação \
-            sendo manipulada.
-        caminho_menu: Caminho do menu na estrutura da aplicação \
-            sendo manipulada. Deve ser informado no formato \
+    Executa em uma única chamada a sequência de cliques que abriria o
+    menu nível a nível — Arquivo, depois Salvar como, e assim por
+    diante —, o que é mais rápido e menos frágil do que localizar cada
+    item separadamente. Os níveis são separados por ``->`` e devem usar
+    os nomes exatos exibidos na aplicação. Nunca lança exceção na
+    navegação: devolve ``False``.
+
+    Parâmetros:
+        caminho_janela: Caminho da janela que possui o menu, em
+            dicionário aninhado.
+        caminho_menu: Caminho do item no formato
             'Menu1->Menu2->Menu3'.
 
-    Returns:
-        Retorna booleano, `True` caso a ação de selecionar o menu \
-            tenha sucesso, `False` caso a ação de selecionar o menu \
-            não tenha sucesso.
+    Retorna:
+        bool: ``True`` se o item foi acionado, ``False`` em caso de
+            falha.
 
-    Raises:
-        `caminho_janela` precisa ser do tipo dict.
+    Exceções:
+        ValueError: Quando ``caminho_janela`` não é um dicionário.
 
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `item` precisa ser do tipo int.
-        ValueError: `selecionar` precisa ser do tipo bool.
-        ValueError: `performar` precisa ser do tipo bool.
-
-    Examples:
-        ...
+    Exemplos:
+        >>> selecionar_menu(caminho_janela=caminho_janela,
+        ...                 caminho_menu='Arquivo->Salvar como')
+        True
     """
 
     # importa app para o escopo da função
@@ -1689,32 +1592,32 @@ def simular_clique(
     eixo_y: int,
     tipo_clique: str = 'unico',
 ) -> bool:
-    """Simula clique físico do mouse conforme coordenadas X e Y informadas.
+    """Executa um clique físico do mouse em coordenadas da tela.
 
-    Parameters:
-        botao: valor str para o lado do botão a ser simulado. \
-            Aceita valores 'ESQUERDO' e 'DIREITO'.
-        eixo_x: valor int para a posição de coordenada X.
-        eixo_y: valor int para a posição de coordenada Y.
-        tipo_clique: valor str para o tipo de clique a ser simulado. \
-            Aceita valores 'UNICO' e 'DUPLO'.
+    Clica em uma posição, e não em um elemento: é o último recurso para
+    componentes que a automação não consegue identificar — telas
+    desenhadas graficamente, controles de terceiros, aplicações
+    remotas. Por depender de coordenadas absolutas, quebra quando a
+    resolução ou a posição da janela muda; sempre que possível,
+    prefira ``clicar``. Obtenha as coordenadas pela chave ``rectangle``
+    de ``capturar_propriedade_elemento``.
 
-    Returns:
-        Retorna booleano, `True` caso tenha sucesso ao simular o clique, \
-        `False` caso não tenha sucesso ao simular o clique.
+    Parâmetros:
+        botao: Botão do mouse: 'ESQUERDO' ou 'DIREITO'.
+        eixo_x: Coordenada horizontal, em pixels.
+        eixo_y: Coordenada vertical, em pixels.
+        tipo_clique: 'UNICO' para um clique, 'DUPLO' para duplo clique.
 
-    Raises:
-        ValueError: Informe um botão válido: esquerdo, direito.
-        ValueError: Tipo de clique inválido, escolha entre único e duplo.
-        ValueError: Coordenadas precisam ser do tipo inteiro .
+    Retorna:
+        bool: ``True`` se o clique foi executado, ``False`` em caso de
+            falha.
 
-    Examples:
-        >>> simular_clique(
-        ...     botao='ESQUERDO',
-        ...     eixo_x=valor_eixo_x,
-        ...     eixo_y=valor_eixo_y,
-        ...     tipo_clique='UNICO',
-        ... )
+    Exceções:
+        ValueError: Quando o botão ou o tipo de clique não é um dos
+            valores aceitos, ou quando as coordenadas não são inteiras.
+
+    Exemplos:
+        >>> simular_clique(botao='ESQUERDO', eixo_x=961, eixo_y=562)
         True
     """
 
@@ -1754,37 +1657,36 @@ def simular_digitacao(
     com_tab: bool = False,
     com_linha_nova: bool = False,
 ) -> bool:
-    """Simula digitação do teclado, performando o teclado real.
+    """Digita um texto acionando o teclado de verdade.
 
-    Parameters:
-        texto: valor str para o valor do texto a ser digitado. \
-            Aceita valores 'ESQUERDO' e 'DIREITO'.
-        com_espaco: valor booleano, `True` para digitar com espaços, \
-            `False` para remover espaços ao digitar.
-        com_tab: valor booleano, `True` para digitar tab ao final \
-            da digitação, `False` para não digitar tab ao final \
-            da digitação.
-        com_linha_nova: valor booleano, `True` para digitar linha \
-            nova ao final da digitação, `False` para não digitar linha \
-            nova ao final da digitação.
+    O texto vai para a janela que estiver em foco, e não para um
+    elemento específico — garanta o foco com ``ativar_foco`` antes de
+    chamar. É a alternativa a ``digitar`` para campos que só reagem a
+    teclas reais, como os que têm máscara ou autocompletar, e a única
+    forma de enviar teclas especiais: a sintaxe do pywinauto reconhece
+    ``{ENTER}``, ``{TAB}``, ``{F5}`` e combinações como ``^a`` para
+    Ctrl+A.
 
-    Returns:
-        Retorna booleano, `True` caso tenha sucesso ao simular \
-            a digitação, `False` caso não tenha sucesso ao simular \
-            a digitação.
+    Parâmetros:
+        texto: Texto a ser digitado. Aceita códigos de teclas especiais
+            entre chaves.
+        com_espaco: Quando ``True``, digita os espaços do texto; quando
+            ``False``, os remove.
+        com_tab: Quando ``True``, interpreta as tabulações do texto como
+            a tecla Tab.
+        com_linha_nova: Quando ``True``, interpreta as quebras de linha
+            do texto como a tecla Enter.
 
-    Raises:
-        ValueError: Informe os parâmetros com_espaco, com_tab e \
-            com_linha_nova com valor boleano.
-        ValueError: Informe um texto do tipo string.
+    Retorna:
+        bool: ``True`` se a digitação foi executada, ``False`` em caso
+            de falha.
 
-    Examples:
-        >>> simular_digitacao(
-        ...     texto = 'FGHIJ',
-        ...     com_espaco = True,
-        ...     com_tab = False,
-        ...     com_linha_nova = False,
-        ... )
+    Exceções:
+        ValueError: Quando ``texto`` não é uma string ou quando algum
+            dos demais parâmetros não é booleano.
+
+    Exemplos:
+        >>> simular_digitacao(texto='FGHIJ{TAB}')
         True
     """
 

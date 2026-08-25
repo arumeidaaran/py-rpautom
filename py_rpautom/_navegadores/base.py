@@ -1,3 +1,15 @@
+"""Infraestrutura interna da automação web.
+
+Reúne o que ``web_utils`` usa por baixo dos panos: a resolução e o
+download do webdriver compatível com o navegador instalado, a
+montagem das opções e do serviço do Selenium, a tradução dos tipos de
+seletor e das condições de espera, e a busca de elementos, inclusive
+dentro de shadow DOM. Escolhe o módulo específico de cada navegador
+— ``chrome``, ``edge`` ou ``firefox`` — conforme o caso. Módulo
+interno: não faz parte da API pública da biblioteca.
+"""
+
+
 from collections import namedtuple
 from functools import partial
 from typing import Union
@@ -50,6 +62,22 @@ def _adicionar_argumentos_padrao(
     argumento: Union[tuple[str, ...], None],
     argumentos_padrao: tuple[str, ...],
 ) -> tuple[str, ...]:
+    """Acrescenta argumentos de linha de comando sem sobrescrever os informados.
+
+    Compara pelo nome do argumento, antes do sinal de igual, e só
+    adiciona o que ainda não foi informado. É essa comparação que
+    garante que os padrões da biblioteca — como o silenciamento de logs
+    — não anulem uma configuração explícita de quem chamou
+    ``iniciar_navegador``.
+
+    Parâmetros:
+        argumento: Argumentos informados pelo usuário. Aceita ``None``.
+        argumentos_padrao: Argumentos que a biblioteca deseja garantir.
+
+    Retorna:
+        tuple[str, ...]: Argumentos do usuário acrescidos apenas dos
+            padrões ainda ausentes.
+    """
     argumento = tuple(argumento or ())
     nomes_argumentos = [item.partition('=')[0] for item in argumento]
 
@@ -69,6 +97,27 @@ def _aguardar_elemento_shadowroot(
     tipo_elemento_escolhido: str,
     identificador: str,
 ):
+    """Aguarda um elemento que esteja dentro de um shadow DOM.
+
+    Componentes web modernos encapsulam sua estrutura em um shadow DOM,
+    invisível às buscas normais do Selenium. Esta função adapta a
+    espera do ``WebDriverWait`` para atravessar essa fronteira,
+    repetindo a busca até o elemento surgir ou o tempo esgotar.
+
+    Parâmetros:
+        wait: Objeto ``WebDriverWait`` já configurado com o tempo
+            limite.
+        tipo_elemento_shadowroot_escolhido: Estratégia de busca do
+            elemento hospedeiro, já convertida para o padrão do Selenium.
+        elemento_shadowroot: Seletor do elemento hospedeiro do shadow
+            DOM.
+        tipo_elemento_escolhido: Estratégia de busca do elemento alvo.
+        identificador: Seletor do elemento alvo, dentro do shadow DOM.
+
+    Retorna:
+        bool: ``True`` se o elemento foi encontrado no tempo, ``False``
+            caso contrário.
+    """
     try:
         wait.until(
             partial(
@@ -92,6 +141,26 @@ def _buscar_elemento_shadowroot(
     identificador: str,
     _navegador,
 ):
+    """Localiza um elemento dentro de um shadow DOM, em uma única tentativa.
+
+    É a condição repetidamente avaliada por
+    ``_aguardar_elemento_shadowroot``: obtém a raiz do shadow DOM a
+    partir do elemento hospedeiro e procura o alvo lá dentro. Recebe o
+    navegador como último parâmetro porque o ``WebDriverWait`` do
+    Selenium o injeta nessa posição.
+
+    Parâmetros:
+        tipo_elemento_shadowroot_escolhido: Estratégia de busca do
+            elemento hospedeiro.
+        elemento_shadowroot: Seletor do elemento hospedeiro.
+        tipo_elemento_escolhido: Estratégia de busca do elemento alvo.
+        identificador: Seletor do elemento alvo.
+        _navegador: Instância do navegador, injetada pelo Selenium.
+
+    Retorna:
+        WebElement | bool: O elemento encontrado, ou ``False`` quando
+            ainda não está disponível.
+    """
     try:
         shadowroot = _retornar_shadowroot(
             _navegador,
@@ -111,6 +180,21 @@ def _buscar_elemento_shadowroot(
 
 
 def _normalizar_exclude_switches(valor_experimento) -> list[str]:
+    """Padroniza o valor de ``excludeSwitches`` para o formato de lista.
+
+    O Selenium aceita essa opção como texto simples ou como coleção, e
+    tratar os dois casos em cada ponto de uso geraria repetição. Esta
+    função converte qualquer uma das formas em lista, permitindo que
+    ``_adicionar_exclude_switches`` trabalhe com um formato único.
+
+    Parâmetros:
+        valor_experimento: Valor informado, em texto, coleção ou
+            ``None``.
+
+    Retorna:
+        list[str]: Itens normalizados. Lista vazia quando o valor é
+            ``None``.
+    """
     if valor_experimento is None:
         return []
 
@@ -124,6 +208,24 @@ def _adicionar_exclude_switches(
     argumento_experimental: Union[tuple[tuple[str, object], ...], None],
     exclude_switches_padrao: tuple[str, ...],
 ) -> tuple[tuple[str, object], ...]:
+    """Acrescenta chaves a ``excludeSwitches`` preservando as existentes.
+
+    A opção ``excludeSwitches`` desliga recursos internos do navegador,
+    como a barra de "controlado por software automatizado" e a saída de
+    log. Como é um valor único que precisa acumular itens de origens
+    diferentes, esta função mescla os padrões da biblioteca com o que o
+    usuário já tinha informado, sem duplicar.
+
+    Parâmetros:
+        argumento_experimental: Opções experimentais informadas, em
+            pares nome/valor. Aceita ``None``.
+        exclude_switches_padrao: Chaves que a biblioteca deseja
+            garantir na opção.
+
+    Retorna:
+        tuple[tuple[str, object], ...]: Opções experimentais com
+            ``excludeSwitches`` já mesclado.
+    """
     experimentos = dict(argumento_experimental or ())
     exclude_switches = _normalizar_exclude_switches(
         experimentos.get('excludeSwitches')
@@ -147,6 +249,27 @@ def _adicionar_configuracao_silenciosa(
     tuple[tuple[str, object], ...],
     object,
 ]:
+    """Aplica as opções que silenciam os logs de console do navegador.
+
+    Sem essa configuração, os navegadores despejam mensagens técnicas
+    no terminal do robô e escondem a saída da automação. Como cada
+    navegador silencia de forma própria — Chrome e Edge por argumentos
+    e ``excludeSwitches``, Firefox por nível de log no objeto de
+    opções —, esta função identifica o navegador pelas capacidades e
+    delega ao módulo correspondente.
+
+    Parâmetros:
+        options_webdriver: Objeto de opções do Selenium do navegador em
+            uso.
+        argumento: Argumentos de linha de comando informados pelo
+            usuário.
+        argumento_experimental: Opções experimentais informadas pelo
+            usuário.
+
+    Retorna:
+        tuple: Argumentos, opções experimentais e objeto de opções, já
+            com a configuração silenciosa aplicada.
+    """
     nome_navegador = str(
         options_webdriver.capabilities.get('browserName', '')
     ).upper()
@@ -197,6 +320,25 @@ def _adicionar_extras(
     argumento_experimental,
     capacidade,
 ):
+    """Aplica ao objeto de opções todas as personalizações do navegador.
+
+    Concentra em um único ponto tudo o que ``iniciar_navegador`` aceita
+    de configuração — argumentos, extensões, opções experimentais e
+    capacidades — e aplica antes de tudo a configuração silenciosa.
+    Cada grupo é opcional: valores vazios são simplesmente ignorados.
+
+    Parâmetros:
+        options_webdriver: Objeto de opções do Selenium a ser
+            configurado.
+        argumento: Argumentos de linha de comando do navegador.
+        extensao: Caminhos de extensões ``.crx`` a carregar.
+        argumento_experimental: Opções experimentais, em pares
+            nome/valor.
+        capacidade: Capacidades do webdriver, em pares nome/valor.
+
+    Retorna:
+        object: O objeto de opções já configurado.
+    """
     (
         argumento,
         argumento_experimental,
@@ -233,6 +375,23 @@ def _adicionar_extras(
 def _coletar_caminho_padrao_navegador(
     nome_navegador: str,
 ) -> str:
+    """Devolve o caminho de instalação padrão do navegador no Windows.
+
+    Evita que o usuário precise informar onde o navegador está
+    instalado no caso comum. Os caminhos são fixos e correspondem à
+    instalação padrão de cada navegador; instalações fora do lugar
+    exigem informar ``caminho_navegador`` em ``iniciar_navegador``.
+
+    Parâmetros:
+        nome_navegador: Navegador desejado: 'chrome', 'edge' ou
+            'firefox'.
+
+    Retorna:
+        str: Caminho do executável do navegador.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é suportado.
+    """
     if nome_navegador.upper().__contains__('CHROME'):
         caminho_navegador = (
             'C:/Program Files/Google/Chrome/Application/chrome.exe'
@@ -257,6 +416,22 @@ def _coletar_lista_webdrivers_locais(
     versao_webdriver: str,
     plataforma_sistema: str,
 ):
+    """Lista os pacotes de webdriver já baixados para uma versão e plataforma.
+
+    Consulta a pasta local de webdrivers em busca de arquivos ``.zip``
+    que atendam à versão do navegador e à arquitetura do sistema. É a
+    verificação que permite reaproveitar um driver já baixado, evitando
+    uma consulta à internet a cada execução do robô.
+
+    Parâmetros:
+        caminho_webdriver: Pasta local do webdriver daquele navegador.
+        versao_webdriver: Versão do navegador, usada como subpasta.
+        plataforma_sistema: Identificador da plataforma (ex.: 'win64').
+
+    Retorna:
+        list[str]: Caminhos dos pacotes encontrados. Lista vazia quando
+            não há nenhum.
+    """
     lista_webdrivers_locais = python_utils.retornar_arquivos_em_pasta(
         caminho=caminho_webdriver,
         filtro=f'{versao_webdriver}\\*{plataforma_sistema}*.zip',
@@ -272,6 +447,31 @@ def _coletar_lista_webdrivers_online(
     proxies: dict[str, str] = None,
     metodo: str = 'GET',
 ) -> Response:
+    """Consulta o repositório oficial de webdrivers e devolve a resposta HTTP.
+
+    Encapsula a parte instável da resolução do driver: tenta a
+    requisição repetidamente, e ao encontrar erro de certificado
+    desliga a verificação SSL e tenta de novo — comportamento
+    necessário em redes corporativas com inspeção de tráfego, e
+    controlável pela variável de ambiente ``WDM_SSL_VERIFY``. Insiste
+    até obter sucesso ou esgotar as tentativas.
+
+    Parâmetros:
+        webdriver_url: Endereço do repositório a consultar.
+        header_arg: Cabeçalhos HTTP exigidos pelo repositório.
+        autenticacao: Credenciais de autenticação básica, quando
+            necessárias.
+        proxies: Proxies por protocolo.
+        metodo: Método HTTP: 'GET' traz o conteúdo, 'HEAD' apenas os
+            cabeçalhos.
+
+    Retorna:
+        Response: Resposta da requisição bem-sucedida.
+
+    Exceções:
+        SystemError: Quando nenhuma das tentativas obtém resposta de
+            sucesso.
+    """
     from os import environ
 
     from requests.exceptions import SSLError
@@ -352,6 +552,31 @@ def _coletar_metadata_webdriver_local(
     versao_navegador: list[str],
     divisao_pastas: str = '/'
 ) -> dict[str, str]:
+    """Reúne as informações do webdriver já presente na máquina.
+
+    É a primeira etapa da resolução do driver: monta o caminho local a
+    partir do navegador e da versão, procura um pacote compatível e, se
+    encontrar, devolve também o caminho do executável. Quando nada é
+    encontrado, os campos voltam como ``None`` — sinal para
+    ``baixar_webdriver`` partir para a consulta online.
+
+    Parâmetros:
+        nome_navegador: Navegador alvo: 'chrome', 'edge' ou 'firefox'.
+        caminho_base_webdriver: Pasta raiz de webdrivers no perfil do
+            usuário.
+        versao_navegador: Versão do navegador em partes.
+        divisao_pastas: Separador usado na montagem dos caminhos.
+
+    Retorna:
+        dict[str, str]: Metadados do driver local, com as chaves
+            ``nome``, ``caminho``, ``plataforma``, ``versao``,
+            ``arquivo_zip``, ``caminho_arquivo_executavel`` e ``tamanho``.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é suportado.
+        ValueError: Quando um pacote é listado mas seu caminho não pode
+            ser determinado.
+    """
     if not nome_navegador.upper() in _navegadores_permitodos:
         raise SystemError(
             (
@@ -458,6 +683,32 @@ def _coletar_metadata_webdriver_online(
     autenticacao: Union[None, list[str, str]] = None,
     divisao_pastas: str = '/'
 ) -> dict[str, str]:
+    """Consulta o repositório oficial e monta os dados de download do driver.
+
+    Etapa acionada quando não há driver local compatível. Delega ao
+    módulo do navegador a descoberta da versão correta — cada
+    fabricante publica seus drivers de forma diferente — e, com o
+    resultado, monta os caminhos de destino do pacote e do executável
+    dentro da pasta local de webdrivers.
+
+    Parâmetros:
+        nome_navegador: Navegador alvo: 'chrome', 'edge' ou 'firefox'.
+        caminho_webdriver: Pasta local do webdriver daquele navegador.
+        webdriver_plataforma: Identificador da plataforma.
+        versao_navegador: Versão do navegador em partes.
+        proxies: Proxies por protocolo usados na consulta.
+        autenticacao: Credenciais de autenticação básica, quando
+            necessárias.
+        divisao_pastas: Separador usado na montagem dos caminhos.
+
+    Retorna:
+        dict[str, str]: Metadados do driver, incluindo
+            ``url_arquivo_zip``, ``arquivo_zip``,
+            ``caminho_arquivo_executavel``, ``versao`` e ``tamanho``.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é suportado.
+    """
     if not nome_navegador.upper() in _navegadores_permitodos:
         raise SystemError(
             (
@@ -596,6 +847,23 @@ def _coletar_metadata_webdriver_online(
 
 
 def _coletar_tamanho_webdriver_local(caminho_webdriver: str):
+    """Devolve o tamanho, em bytes, do executável do webdriver.
+
+    Serve para registrar o driver efetivamente em uso e para detectar
+    download interrompido — um executável truncado costuma falhar de
+    forma confusa na hora de iniciar o navegador. Exige que o arquivo
+    exista.
+
+    Parâmetros:
+        caminho_webdriver: Caminho do executável do webdriver.
+
+    Retorna:
+        int: Tamanho do arquivo em bytes.
+
+    Exceções:
+        SystemError: Quando o executável não existe no caminho
+            informado.
+    """
     from pathlib import Path
 
 
@@ -613,13 +881,41 @@ def _coletar_tamanho_webdriver_local(caminho_webdriver: str):
 
 
 def _definir_caminho_navegador(options_webdriver, caminho_navegador: str):
+    """Informa ao Selenium onde está o executável do navegador.
+
+    Sem essa definição, o Selenium procura o navegador na instalação
+    padrão do sistema. Ajustar o caminho permite usar uma instalação
+    portátil ou uma versão específica, mantida à parte justamente para
+    não depender das atualizações automáticas do navegador principal.
+
+    Parâmetros:
+        options_webdriver: Objeto de opções do Selenium.
+        caminho_navegador: Caminho do executável do navegador.
+
+    Retorna:
+        object: O objeto de opções com o caminho definido.
+    """
     options_webdriver.binary_location = caminho_navegador
 
     return options_webdriver
 
 
 def _escolher_tipo_elemento(tipo_elemento):
-    """Escolhe um tipo de elemento 'locator'."""
+    """Converte o nome do tipo de seletor na constante ``By`` do Selenium.
+
+    É a camada que permite à biblioteca receber os tipos em texto
+    simples — 'CSS_SELECTOR', 'XPATH', 'ID' — em vez de exigir a
+    importação de ``By`` no código do usuário. Não diferencia
+    maiúsculas de minúsculas. Valores vazios viram ``None``, e nomes
+    desconhecidos são devolvidos sem alteração.
+
+    Parâmetros:
+        tipo_elemento: Nome do tipo de seletor.
+
+    Retorna:
+        str | None: Constante ``By`` correspondente, ``None`` para valor
+            vazio, ou o próprio valor informado quando não reconhecido.
+    """
     from selenium.webdriver.common.by import By
 
 
@@ -648,7 +944,25 @@ def _escolher_tipo_elemento(tipo_elemento):
 def _escolher_comportamento_esperado(
     comportamento_esperado: str,
 ) -> callable[WebDriverOrWebElement]:
-    """Escolhe um tipo de comportamento manipulado pelo Selenium."""
+    """Converte o nome de uma condição de espera na função do Selenium.
+
+    Traduz o texto informado em ``aguardar_elemento`` para a condição
+    correspondente do módulo ``expected_conditions``, cobrindo todo o
+    catálogo do Selenium: presença, visibilidade, clicabilidade, texto
+    esperado, mudança de título ou URL, alertas e contagem de janelas.
+    É essa tradução que dispensa o usuário de importar o Selenium
+    diretamente.
+
+    Parâmetros:
+        comportamento_esperado: Nome da condição, sem diferenciar
+            maiúsculas.
+
+    Retorna:
+        callable: Função de condição do Selenium correspondente.
+
+    Exceções:
+        SystemError: Quando a condição informada não está mapeada.
+    """
     from selenium.webdriver.support import expected_conditions as EC
 
 
@@ -740,6 +1054,22 @@ def _instanciar_webdriver(
     url: str,
     webdriver_options=None,
 ):
+    """Sobe o serviço do webdriver e cria a sessão remota do navegador.
+
+    Inicia o processo do driver, conecta-se a ele pelo endereço local
+    que ele expõe e abre a URL inicial. O uso de sessão remota
+    apontando para o serviço local é o que permite controlar a porta do
+    driver e manter a conexão viva ao longo de execuções demoradas.
+
+    Parâmetros:
+        service: Objeto ``Service`` do Selenium, já configurado.
+        url: Endereço aberto assim que a sessão é criada.
+        webdriver_options: Objeto de opções com as personalizações do
+            navegador.
+
+    Retorna:
+        Remote: Instância do navegador pronta para automação.
+    """
     from selenium.webdriver import Remote
 
     service.start()
@@ -761,7 +1091,27 @@ def _procurar_elemento(
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
 ):
-    """Procura um elemento presente que corresponda ao informado."""
+    """Localiza um elemento na página e o traz para o centro da tela.
+
+    É o localizador usado por todas as funções de interação de
+    ``web_utils``. Quando informados o hospedeiro e seu tipo, atravessa
+    a fronteira do shadow DOM antes de buscar. Diferentemente de
+    ``procurar_elemento``, devolve o elemento do Selenium e propaga a
+    exceção quando ele não existe.
+
+    Parâmetros:
+        seletor: Seletor do elemento procurado.
+        tipo_elemento: Tipo do seletor.
+        elemento_shadowroot: Seletor do elemento hospedeiro do shadow
+            DOM.
+        tipo_elemento_shadowroot: Tipo do seletor do hospedeiro.
+
+    Retorna:
+        WebElement: Elemento localizado.
+
+    Exceções:
+        NoSuchElementException: Quando o elemento não existe na página.
+    """
     from py_rpautom.web_utils import _navegador, centralizar_elemento
 
     arvore_webelemento = _navegador
@@ -784,7 +1134,20 @@ def _procurar_elemento(
 
 
 def _procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
-    """Procura todos os elementos presentes que correspondam ao informado."""
+    """Localiza todos os elementos que casam com o seletor.
+
+    Base de ``contar_elementos`` e ``procurar_muitos_elementos``.
+    Devolve os elementos do Selenium, e não seus textos, permitindo que
+    quem chamou decida o que extrair de cada um. Nenhuma
+    correspondência resulta em lista vazia, sem exceção.
+
+    Parâmetros:
+        seletor: Seletor que casa com o conjunto de elementos.
+        tipo_elemento: Tipo do seletor.
+
+    Retorna:
+        list[WebElement]: Elementos encontrados, na ordem da página.
+    """
     from py_rpautom.web_utils import _navegador, centralizar_elemento
 
     tipo_elemento = _escolher_tipo_elemento(tipo_elemento)
@@ -796,6 +1159,22 @@ def _procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
 
 
 def _retornar_webdriver_options(nome_navegador):
+    """Cria o objeto de opções correspondente ao navegador informado.
+
+    Cada navegador tem sua própria classe de opções no Selenium, e é
+    ela que aceita argumentos, extensões e capacidades. Esta função
+    escolhe a classe certa e devolve a instância vazia, que será
+    preenchida por ``_adicionar_extras``.
+
+    Parâmetros:
+        nome_navegador: Navegador alvo: 'chrome', 'edge' ou 'firefox'.
+
+    Retorna:
+        object: Objeto de opções do navegador correspondente.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é suportado.
+    """
     from selenium import webdriver
 
     if nome_navegador.upper().__contains__('CHROME'):
@@ -818,6 +1197,25 @@ def _retornar_service(
     nome_navegador,
     porta_webdriver,
 ):
+    """Monta o objeto de serviço que executa o webdriver.
+
+    O serviço é o processo intermediário entre o Selenium e o
+    navegador. Aqui ele é configurado com o executável correto para o
+    navegador, a porta desejada e o descarte da saída de log — este
+    último responsável por manter o console do robô limpo.
+
+    Parâmetros:
+        executavel_webdriver: Caminho do executável do webdriver.
+        nome_navegador: Navegador alvo: 'chrome', 'edge' ou 'firefox'.
+        porta_webdriver: Porta em que o serviço escutará. ``None`` deixa
+            o Selenium escolher.
+
+    Retorna:
+        Service: Objeto de serviço pronto para ser iniciado.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é suportado.
+    """
     from subprocess import DEVNULL
 
     if nome_navegador.upper().__contains__('CHROME'):
@@ -846,6 +1244,20 @@ def _retornar_service(
 
 
 def _coletar_plataforma_webdriver() -> str:
+    """Identifica a plataforma no padrão usado pelos repositórios de driver.
+
+    Combina sistema operacional e arquitetura do processador no
+    identificador que os fabricantes usam para nomear os pacotes —
+    'win64', 'linux64', 'mac64'. É esse valor que permite escolher, na
+    lista publicada, o pacote correto para a máquina.
+
+    Retorna:
+        str: Identificador da plataforma.
+
+    Exceções:
+        ValueError: Quando o sistema operacional ou a arquitetura não
+            estão mapeados.
+    """
     MAPA_PLATAFORMA = {
         "WINDOWS": {
             "X86": "win32",
@@ -889,6 +1301,22 @@ def coletar_caminho_executavel_webdriver(
     versao_navegador: str,
     divisao_pastas: str,
 ) -> str:
+    """Procura o executável do webdriver já descompactado na pasta da versão.
+
+    Confirma que o pacote baixado anteriormente foi de fato extraído e
+    está pronto para uso. Um retorno vazio indica que só existe o
+    ``.zip``, ou nem isso — caso em que o driver precisa ser baixado ou
+    descompactado antes de iniciar o navegador.
+
+    Parâmetros:
+        caminho_webdriver: Pasta local do webdriver daquele navegador.
+        versao_navegador: Versão do navegador, usada como subpasta.
+        divisao_pastas: Separador usado na montagem do caminho.
+
+    Retorna:
+        str: Caminho do executável encontrado, ou string vazia quando
+            não há nenhum.
+    """
     lista_executavel_webdriver_local = (
         python_utils.retornar_arquivos_em_pasta(
             caminho=caminho_webdriver,
@@ -908,6 +1336,19 @@ def coletar_caminho_executavel_webdriver(
 def _coletar_caminho_webdriver_local(
     lista_webdrivers_locais: list[str],
 ) -> str:
+    """Escolhe o pacote de webdriver mais recente entre os disponíveis.
+
+    Quando há mais de um pacote baixado para a mesma versão do
+    navegador, ordena os caminhos e fica com o último — como os nomes
+    carregam a versão do driver, a ordenação alfabética coloca a versão
+    mais nova no fim.
+
+    Parâmetros:
+        lista_webdrivers_locais: Caminhos dos pacotes encontrados.
+
+    Retorna:
+        str: Caminho do pacote escolhido.
+    """
     lista_webdrivers_locais.sort()
     caminho_webdriver_local = lista_webdrivers_locais[-1]
 
@@ -915,6 +1356,19 @@ def _coletar_caminho_webdriver_local(
 
 
 def _coletar_versao_webdriver(executavel_webdriver: str) -> str:
+    """Pergunta ao próprio executável do webdriver qual é a sua versão.
+
+    Executa o driver com a opção de versão e extrai o número da saída.
+    Diferentemente de deduzir a versão pelo nome da pasta, confirma o
+    que o binário realmente é — verificação útil quando se suspeita de
+    um arquivo trocado ou de um download corrompido.
+
+    Parâmetros:
+        executavel_webdriver: Caminho do executável do webdriver.
+
+    Retorna:
+        str: Versão informada pelo executável.
+    """
     import subprocess
 
     execucao_webdriver = subprocess.Popen(
@@ -932,6 +1386,20 @@ def _coletar_versao_webdriver_local(
     caminho_webdriver_local: str,
     divisao_pastas: str
 ) -> str:
+    """Extrai a versão do webdriver a partir do caminho do arquivo local.
+
+    A pasta imediatamente acima do pacote leva o nome da versão, o que
+    permite descobri-la sem executar o binário — mais rápido e sem
+    depender de o arquivo ser executável. Normaliza o separador antes,
+    já que os caminhos podem chegar em qualquer um dos dois formatos.
+
+    Parâmetros:
+        caminho_webdriver_local: Caminho do pacote do webdriver.
+        divisao_pastas: Separador de pastas usado no caminho.
+
+    Retorna:
+        str: Versão extraída do caminho.
+    """
     if not divisao_pastas == '\\':
         caminho_webdriver_local = (
             caminho_webdriver_local.replace('\\', divisao_pastas)
@@ -947,6 +1415,19 @@ def _coletar_versao_webdriver_local(
 def _coletar_versao_webdriver_local_sem_minor(
     versao_webdriver_local: str
 ) -> str:
+    """Remove a última parte do número de versão do webdriver.
+
+    Os fabricantes garantem compatibilidade dentro da mesma linha de
+    versão, não em cada revisão. Comparar as versões sem o último
+    número é o que permite reaproveitar um driver de revisão próxima em
+    vez de baixar um novo a cada atualização menor do navegador.
+
+    Parâmetros:
+        versao_webdriver_local: Versão completa do webdriver.
+
+    Retorna:
+        str: Versão sem a última parte.
+    """
     versao_webdriver_local_sem_minor = '.'.join(
         versao_webdriver_local.split('.')[:-1]
     )
@@ -957,6 +1438,19 @@ def _coletar_versao_webdriver_local_sem_minor(
 def _coletar_versao_navegador(
     versao_navegador: list[str]
 ) -> str:
+    """Converte a versão do navegador de partes numéricas para texto.
+
+    ``python_utils.coletar_versao_arquivo`` devolve a versão em uma
+    tupla de números, enquanto os caminhos e as URLs de download exigem
+    o formato com pontos. Esta conversão é a ponte entre os dois, e a
+    passagem por inteiro descarta zeros à esquerda e valores em texto.
+
+    Parâmetros:
+        versao_navegador: Versão em partes numéricas.
+
+    Retorna:
+        str: Versão no formato 'maior.menor.build.revisao'.
+    """
     versao_navegador = '.'.join(
         [str(parte_versao) for parte_versao in map(int, versao_navegador)]
     )
@@ -967,6 +1461,19 @@ def _coletar_versao_navegador(
 def _coletar_versao_navegador_sem_minor(
     versao_navegador: list[str]
 ) -> str:
+    """Devolve a versão do navegador sem a última parte.
+
+    É a versão usada para casar com os pacotes publicados pelos
+    fabricantes, que agrupam os drivers por linha de versão e não por
+    revisão exata. Sem esse recorte, quase nenhuma correspondência
+    seria encontrada na lista online.
+
+    Parâmetros:
+        versao_navegador: Versão em partes numéricas.
+
+    Retorna:
+        str: Versão em texto, sem a última parte.
+    """
     versao_navegador_sem_minor = _coletar_versao_navegador(
         versao_navegador=versao_navegador
     )
@@ -976,6 +1483,16 @@ def _coletar_versao_navegador_sem_minor(
 
 
 def _coletar_caminho_base_webdriver():
+    """Devolve a pasta ``webdrivers`` dentro do perfil do usuário.
+
+    Centralizar os drivers no perfil do usuário resolve dois problemas:
+    dispensa permissão de administrador para gravar e faz com que
+    drivers baixados por um robô sirvam a todos os demais da mesma
+    máquina.
+
+    Retorna:
+        str: Caminho da pasta raiz de webdrivers.
+    """
     from pathlib import Path
 
     caminho_usuario = Path.home()
@@ -992,6 +1509,20 @@ def _coletar_caminho_webdriver(
     caminho_base_webdriver: str,
     nome_webdriver: str,
 ) -> str:
+    """Monta a pasta específica de um webdriver dentro da pasta raiz.
+
+    Cada navegador ganha sua própria subpasta — ``chromedriver``,
+    ``edgedriver``, ``geckodriver`` —, o que mantém separados os
+    drivers de navegadores diferentes e permite conviver com várias
+    versões de cada um.
+
+    Parâmetros:
+        caminho_base_webdriver: Pasta raiz de webdrivers.
+        nome_webdriver: Nome do driver, que dá nome à subpasta.
+
+    Retorna:
+        str: Caminho absoluto da pasta do driver.
+    """
     from pathlib import Path
 
 
@@ -1003,6 +1534,21 @@ def _coletar_caminho_webdriver(
 def _criar_caminho_webdriver(
     caminho_webdriver: str,
 ) -> bool:
+    """Cria a pasta de webdrivers quando ela ainda não existe.
+
+    Prepara o destino antes do download, criando toda a hierarquia
+    necessária. Nunca lança exceção: devolve ``False`` diante de
+    qualquer falha, permitindo que ``baixar_webdriver`` emita uma
+    mensagem própria sobre a impossibilidade de gravar no perfil do
+    usuário.
+
+    Parâmetros:
+        caminho_webdriver: Caminho da pasta a ser criada.
+
+    Retorna:
+        bool: ``True`` se a pasta foi criada agora; ``False`` se já
+            existia ou se a criação falhou.
+    """
     resultado_caminho_webdriver = False
 
     try:
@@ -1024,6 +1570,23 @@ def _retornar_shadowroot(
     tipo_elemento_raiz: str,
     elemento_raiz: str,
 ):
+    """Devolve a raiz do shadow DOM a partir do elemento hospedeiro.
+
+    Componentes web modernos escondem sua estrutura interna atrás de um
+    elemento hospedeiro; a busca por elementos internos só funciona a
+    partir da raiz do shadow DOM. Esta função faz essa passagem, que é
+    o ponto de entrada para automatizar esse tipo de componente.
+
+    Parâmetros:
+        _navegador: Instância do navegador ou elemento a partir do qual
+            buscar.
+        tipo_elemento_raiz: Tipo do seletor do elemento hospedeiro.
+        elemento_raiz: Seletor do elemento hospedeiro.
+
+    Retorna:
+        ShadowRoot: Raiz do shadow DOM, na qual novas buscas podem ser
+            feitas.
+    """
     elemento_raiz = _navegador.find_element(
         tipo_elemento_raiz,
         elemento_raiz,

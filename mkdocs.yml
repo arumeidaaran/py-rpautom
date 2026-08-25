@@ -7,6 +7,7 @@ remote_name: origin
 
 watch:
   - docs
+  - py_rpautom
 
 plugins:
   - mkdocstrings:
@@ -15,8 +16,28 @@ plugins:
           paths: ["py_rpautom"]
           options:
             docstring_style: google
+            # Traduz "Parâmetros:", "Retorna:", "Exceções:" e "Exemplos:"
+            #   para os rótulos que o parser Google reconhece, mantendo o
+            #   cabeçalho em português na página gerada. Sem isso, as
+            #   seções virariam blocos de aviso em vez de tabelas.
+            extensions:
+              - docs/extensoes/traduzir_secoes.py:TraduzirSecoes
             docstring_options:
               returns_multiple_items: false
+              # Lê "tipo: descrição" em Retorna: como tipo, não como nome.
+              returns_named_value: false
+              # A biblioteca ainda não anota todos os parâmetros; sem isso
+              #   o build emite um aviso por parâmetro sem anotação.
+              warn_missing_types: false
+            # Publica apenas o que cada módulo declara em __all__,
+            #   deixando as funções internas fora da referência.
+            filters: public
+            heading_level: 2
+            members_order: alphabetical
+            show_root_heading: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_source: true
   - search
 
 hooks:
@@ -55,6 +76,10 @@ nav:
   - Guia de automação web: guia_usuario/web_utils.md
   - Guia de automação desktop: guia_usuario/desktop_utils.md
   - Guia de utilitários python: guia_usuario/python_utils.md
+  - Referência da API:
+    - Automação web: referencia/web_utils.md
+    - Automação desktop: referencia/desktop_utils.md
+    - Utilitários python: referencia/python_utils.md
   - Sobre:
     - Notas de Release: sobre/release-notes.md
     - Licença: sobre/license.md

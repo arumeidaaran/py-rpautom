@@ -1,3 +1,12 @@
+"""Resolução do chromedriver a partir do catálogo do Google.
+
+Sabe onde o Google publica as versões do chromedriver, como ler o
+catálogo JSON e como escolher o pacote compatível com o Chrome
+instalado. Concentra também as opções que silenciam a saída de log do
+navegador. Módulo interno, usado por ``base``.
+"""
+
+
 from requests import Response
 from typing import Union
 
@@ -12,6 +21,35 @@ def _coletar_metadata_chromedriver(
     autenticacao: Union[None, list[str, str]] = None,
     divisao_pastas: str = '/',
 ) -> dict[str, str]:
+    """Descobre, no catálogo oficial do Chrome, o pacote de driver compatível.
+
+    O Google publica todas as versões do chromedriver em um catálogo
+    JSON. Esta função busca o catálogo, filtra pelos itens que casam ao
+    mesmo tempo com a linha de versão do Chrome instalado e com a
+    plataforma da máquina, e devolve os dados do primeiro
+    correspondente — o mais recente da lista.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador, usado nas mensagens de erro.
+        webdriver_url: Endereço do catálogo de versões.
+        webdriver_plataforma: Identificador da plataforma
+            (ex.: 'win64').
+        header_request: Cabeçalhos HTTP da consulta.
+        versao_navegador_sem_minor: Linha de versão do Chrome instalado.
+        proxies: Proxies por protocolo.
+        autenticacao: Credenciais de autenticação básica, quando
+            necessárias.
+        divisao_pastas: Separador usado na leitura dos nomes de pacote.
+
+    Retorna:
+        dict[str, str]: Metadados do pacote, com ``nome_arquivo_zip``,
+            ``versao``, ``tamanho`` e ``url_arquivo_zip``.
+
+    Exceções:
+        ValueError: Quando o catálogo retorna conteúdo vazio.
+        SystemError: Quando o catálogo não pôde ser lido ou nenhuma
+            versão compatível está disponível.
+    """
     from py_rpautom._navegadores.base import _coletar_lista_webdrivers_online
 
     lista_webdrivers_compativeis = []
@@ -83,6 +121,22 @@ def _coletar_metadata_chromedriver(
 
 
 def _coletar_nome_webdriver_chrome(nome_navegador: str) -> str:
+    """Devolve o nome do driver do Chrome e valida o navegador informado.
+
+    Além de fornecer o nome que dá origem à subpasta local do driver,
+    funciona como barreira: recusa navegadores que não sejam Chrome,
+    impedindo que um erro de digitação leve ao download do driver
+    errado.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador a validar.
+
+    Retorna:
+        str: 'chromedriver'.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é Chrome.
+    """
     if not nome_navegador.upper().__contains__('CHROME'):
         raise SystemError(
             f'Navegador {nome_navegador} incorreto para ChromeDriver'
@@ -96,6 +150,21 @@ def _coletar_nome_webdriver_chrome(nome_navegador: str) -> str:
 def _coletar_metadata_requisicao_chromedriver(
     nome_navegador: str,
 ) -> dict[str, str]:
+    """Devolve o endereço e os cabeçalhos para consultar o catálogo do Chrome.
+
+    Concentra em um único ponto a URL do catálogo oficial e os
+    cabeçalhos que o serviço espera — quando o Google muda o endereço
+    de publicação, é só aqui que a alteração precisa acontecer.
+
+    Parâmetros:
+        nome_navegador: Nome do navegador a validar.
+
+    Retorna:
+        dict[str, str]: Dicionário com as chaves ``url`` e ``headers``.
+
+    Exceções:
+        SystemError: Quando o navegador informado não é Chrome.
+    """
     if not nome_navegador.upper().__contains__('CHROME'):
         raise SystemError(
             f'Navegador {nome_navegador} incorreto para ChromeDriver'
@@ -125,6 +194,17 @@ def _configuracao_silenciosa_chrome() -> tuple[
     tuple[str, ...],
     tuple[str, ...],
 ]:
+    """Devolve as opções que silenciam a saída de log do Chrome.
+
+    Reúne os argumentos de linha de comando e as chaves de
+    ``excludeSwitches`` que impedem o Chrome de escrever mensagens
+    técnicas no console do robô, mantendo visível apenas a saída da
+    automação.
+
+    Retorna:
+        tuple: Argumentos silenciosos e chaves de ``excludeSwitches``,
+            nessa ordem.
+    """
     argumentos_silenciosos = (
         '--disable-background-networking',
         '--disable-logging',
@@ -138,6 +218,24 @@ def _configuracao_silenciosa_chrome() -> tuple[
 def _tratar_lista_chromedriver(
     response_http_webdrivers: Response
 ) -> list[tuple[str, str, str]]:
+    """Extrai do catálogo JSON a lista de pacotes de chromedriver.
+
+    Percorre a estrutura publicada pelo Google, recolhe as URLs de
+    download de cada plataforma e monta, a partir delas, o nome
+    versão/arquivo usado na comparação. Versões que não publicam
+    chromedriver são simplesmente ignoradas. O tamanho vem vazio porque
+    o catálogo não o informa.
+
+    Parâmetros:
+        response_http_webdrivers: Resposta HTTP com o catálogo em JSON.
+
+    Retorna:
+        list[tuple[str, str, str]]: Uma tupla por pacote, com nome, URL
+            e tamanho.
+
+    Exceções:
+        SystemError: Quando o catálogo não traz nenhum chromedriver.
+    """
     from json import loads
 
 
