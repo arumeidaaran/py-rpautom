@@ -91,8 +91,9 @@ def baixar_arquivo(
         200.
 
     Exceções:
-        Repassa exceções de escrita de arquivo e exceções geradas por
-        `requisitar_url`.
+        RequestException: Repassada por ``requisitar_url`` quando a requisição
+            falha.
+        OSError: Quando o arquivo não pode ser gravado no caminho de destino.
 
     Exemplos:
         >>> from pathlib import Path
@@ -149,9 +150,13 @@ def baixar_webdriver(
         executável encontrado ou baixado.
 
     Exceções:
-        SystemError: Não foi possível criar a pasta base do webdriver.
-
-        Repassa exceções das funções de metadata, download e descompactação.
+        SystemError: Quando a pasta base do webdriver não pode ser criada,
+            quando o navegador não é suportado ou quando nenhuma versão
+            compatível está disponível no repositório.
+        ValueError: Quando um pacote local é localizado mas seu caminho não
+            pode ser determinado.
+        BadZipFile: Quando o pacote baixado está corrompido e não pode ser
+            descompactado.
 
     Exemplos:
         >>> caminho_chrome = (
@@ -645,7 +650,7 @@ def abrir_pagina(url: str):
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a página não possa ser aberta.
+        WebDriverException: Quando a página não pode ser carregada.
 
     Exemplos:
         >>> abrir_pagina(url='https://bing.com')
@@ -667,7 +672,7 @@ def abrir_janela(url: str = None):
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso o script de abertura falhe.
+        JavascriptException: Quando o script que abre a nova aba falha.
 
     Exemplos:
         >>> abrir_janela()
@@ -688,7 +693,7 @@ def atualizar_pagina():
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a atualização falhe.
+        WebDriverException: Quando a página não pode ser recarregada.
 
     Exemplos:
         >>> atualizar_pagina()
@@ -713,9 +718,6 @@ def trocar_para(id, tipo):
     Retorna:
         Retorna `True` quando a troca é concluída, o texto do alerta quando
         `tipo='ALERT'` e `id='TEXT'`, ou `False` quando ocorrer erro.
-
-    Exceções:
-        Não levanta exceções.
 
     Exemplos:
         >>> trocar_para(id=1, tipo='WINDOW')
@@ -772,7 +774,7 @@ def coletar_id_janela():
         Retorna string com o handle da janela/aba atual.
 
     Exceções:
-        Repassa exceções caso não exista janela ativa.
+        NoSuchWindowException: Quando não há janela ativa no navegador.
 
     Exemplos:
         >>> id_janela = coletar_id_janela()
@@ -792,7 +794,8 @@ def coletar_nome_navegador_atual() -> str:
         Retorna string com o nome do navegador.
 
     Exceções:
-        Repassa exceções caso o navegador não esteja iniciado.
+        NameError: Quando ``iniciar_navegador`` ainda não foi chamado nesta
+            execução.
 
     Exemplos:
         >>> nome = coletar_nome_navegador_atual()
@@ -812,7 +815,8 @@ def coletar_todas_ids_janelas():
         Retorna lista de strings com os handles das janelas/abas abertas.
 
     Exceções:
-        Repassa exceções caso o navegador não esteja iniciado.
+        NameError: Quando ``iniciar_navegador`` ainda não foi chamado nesta
+            execução.
 
     Exemplos:
         >>> ids = coletar_todas_ids_janelas()
@@ -832,7 +836,8 @@ def esperar_pagina_carregar():
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a espera falhe.
+        WebDriverException: Quando o estado de carregamento da página não pode
+            ser consultado.
 
     Exemplos:
         >>> esperar_pagina_carregar()
@@ -856,7 +861,8 @@ def voltar_pagina():
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a navegação falhe.
+        WebDriverException: Quando não é possível voltar no histórico do
+            navegador.
 
     Exemplos:
         >>> voltar_pagina()
@@ -908,8 +914,8 @@ def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
         Não possui retorno.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado ou quando o tipo
-        de seletor não é compatível com o script executado.
+        JavascriptException: Quando o seletor não encontra nenhum elemento e a
+            rolagem é aplicada sobre um valor nulo.
 
     Exemplos:
         >>> centralizar_elemento(
@@ -952,7 +958,7 @@ def executar_script(script, args='', assincrono=False):
         Retorna o valor devolvido pelo JavaScript executado.
 
     Exceções:
-        Repassa exceções caso o script falhe.
+        JavascriptException: Quando o script informado falha.
 
     Exemplos:
         >>> executar_script(script='return document.title')
@@ -991,7 +997,8 @@ def retornar_codigo_fonte():
         Retorna string com o HTML da página atual.
 
     Exceções:
-        Repassa exceções caso o navegador não esteja iniciado.
+        NameError: Quando ``iniciar_navegador`` ainda não foi chamado nesta
+            execução.
 
     Exemplos:
         >>> retornar_codigo_fonte()
@@ -1035,9 +1042,6 @@ def aguardar_elemento(
     Retorna:
         Retorna booleano, `True` quando a espera é concluída, `False` quando
         ocorre erro ou timeout.
-
-    Exceções:
-        Não levanta exceções.
 
     Exemplos:
         >>> aguardar_elemento(
@@ -1275,7 +1279,8 @@ def procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
         Retorna lista de strings com o texto de cada elemento localizado.
 
     Exceções:
-        Repassa exceções quando a busca ou a centralização falha.
+        InvalidSelectorException: Quando o seletor informado é inválido.
+            Nenhuma correspondência devolve lista vazia, sem exceção.
 
     Exemplos:
         >>> procurar_muitos_elementos(
@@ -1322,9 +1327,6 @@ def procurar_elemento(
     Retorna:
         Retorna booleano, `True` quando o elemento é encontrado, `False`
         quando a busca falha.
-
-    Exceções:
-        Não levanta exceções.
 
     Exemplos:
         >>> procurar_elemento(
@@ -1386,8 +1388,8 @@ def selecionar_elemento(
         Retorna booleano, `True` quando a seleção é concluída.
 
     Exceções:
-        Repassa exceções quando o elemento não existe ou quando o valor
-        visível não é encontrado.
+        NoSuchElementException: Quando o campo não existe ou nenhuma opção
+            possui o texto informado.
 
     Exemplos:
         >>> selecionar_elemento(
@@ -1425,7 +1427,8 @@ def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
         Retorna inteiro com a quantidade de elementos encontrados.
 
     Exceções:
-        Repassa exceções quando a busca ou a centralização falha.
+        InvalidSelectorException: Quando o seletor informado é inválido.
+            Nenhuma correspondência devolve zero, sem exceção.
 
     Exemplos:
         >>> contar_elementos(
@@ -1454,7 +1457,7 @@ def extrair_texto(seletor, tipo_elemento='CSS_SELECTOR'):
         Retorna string com o texto do elemento localizado.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado.
+        NoSuchElementException: Quando o elemento não é encontrado.
 
     Exemplos:
         >>> extrair_texto(
@@ -1492,9 +1495,8 @@ def coletar_atributo(
         Retorna o valor coletado do elemento.
 
     Exceções:
-        ValueError: `metodo` precisa ser um dos métodos aceitos.
-
-        Repassa exceções quando o elemento não é encontrado.
+        ValueError: Quando `metodo` não é um dos métodos aceitos.
+        NoSuchElementException: Quando o elemento não é encontrado.
 
     Exemplos:
         >>> coletar_atributo(
@@ -1551,7 +1553,7 @@ def alterar_atributo(
         Retorna o valor do atributo após a alteração.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado.
+        NoSuchElementException: Quando o elemento não é encontrado.
 
     Exemplos:
         >>> alterar_atributo(
@@ -1616,8 +1618,9 @@ def clicar_elemento(
         vazia quando nenhum alerta for encontrado.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado ou quando o
-        clique falha.
+        NoSuchElementException: Quando o elemento não é encontrado.
+        ElementClickInterceptedException: Quando outro elemento da página
+            intercepta o clique.
 
     Exemplos:
         >>> clicar_elemento(
@@ -1705,7 +1708,8 @@ def validar_porta(ip, porta, tempo_limite=1):
         porta não responde dentro do tempo limite.
 
     Exceções:
-        Repassa exceções caso a criação do socket falhe.
+        OSError: Quando o socket não pode ser criado ou o endereço informado é
+            inválido.
 
     Exemplos:
         >>> validar_porta(ip='127.0.0.1', porta='80', tempo_limite=10)
@@ -1740,8 +1744,7 @@ def escrever_em_elemento(
         Não possui retorno.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado ou
-        quando a digitação falha.
+        NoSuchElementException: Quando o campo não é encontrado.
 
     Exemplos:
         >>> escrever_em_elemento(
@@ -1789,8 +1792,7 @@ def limpar_campo(
         Não possui retorno.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado ou quando a
-        limpeza falha.
+        NoSuchElementException: Quando o campo não é encontrado.
 
     Exemplos:
         >>> limpar_campo(
@@ -1827,7 +1829,7 @@ def maximizar_janela():
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a janela não possa ser maximizada.
+        WebDriverException: Quando a janela não pode ser maximizada.
 
     Exemplos:
         >>> maximizar_janela()
@@ -1851,8 +1853,7 @@ def performar(acao, seletor, tipo_elemento='CSS_SELECTOR'):
         Retorna booleano, `True` ao final da função.
 
     Exceções:
-        Repassa exceções quando o elemento não é encontrado ou quando a ação
-        falha.
+        NoSuchElementException: Quando o elemento não é encontrado.
 
     Exemplos:
         >>> performar(
@@ -1901,9 +1902,6 @@ def print_para_pdf(
     Retorna:
         Retorna booleano, `True` quando o PDF é criado, `False` quando ocorre
         erro.
-
-    Exceções:
-        Não levanta exceções.
 
     Exemplos:
         >>> from pathlib import Path
@@ -1985,9 +1983,9 @@ def requisitar_url(
         Retorna objeto `requests.Response`.
 
     Exceções:
-        SystemError: `metodo` precisa ser `GET` ou `HEAD`.
-
-        Repassa exceções quando a requisição falha.
+        SystemError: Quando `metodo` não é `GET` nem `HEAD`.
+        RequestException: Quando a requisição falha por rede, certificado
+            ou tempo limite.
 
     Exemplos:
         >>> resposta = requisitar_url(
@@ -2033,7 +2031,8 @@ def fechar_janela(janela):
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso a janela não exista ou não possa ser fechada.
+        IndexError: Quando o índice informado não corresponde a nenhuma aba
+            aberta.
 
     Exemplos:
         >>> id_principal = coletar_id_janela()
@@ -2053,8 +2052,8 @@ def fechar_janelas_menos_essa(id_janela):
         Não possui retorno.
 
     Exceções:
-        Repassa exceções caso alguma janela não possa ser selecionada ou
-            fechada.
+        NoSuchWindowException: Quando alguma das abas deixa de existir durante
+            o percurso.
 
     Exemplos:
         >>> id_principal = coletar_id_janela()
@@ -2076,9 +2075,6 @@ def encerrar_navegador():
     Retorna:
         Retorna booleano, `True` quando todas as janelas são fechadas e o
         navegador é encerrado, `False` quando ocorre erro.
-
-    Exceções:
-        Não levanta exceções.
 
     Exemplos:
         >>> encerrar_navegador()
