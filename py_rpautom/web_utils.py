@@ -1,8 +1,10 @@
 """Módulo para automação web."""
 
 from collections import namedtuple
-from typing import Union
 from pathlib import Path
+from typing import Any, Union
+
+from requests import Response
 
 from py_rpautom import desktop_utils as desktop_utils
 from py_rpautom import python_utils as python_utils
@@ -62,12 +64,12 @@ __all__ = [
 
 
 def baixar_arquivo(
-    url,
-    caminho_destino,
-    stream=True,
+    url: str,
+    caminho_destino: str,
+    stream: bool = True,
     verificacao_ssl: bool = True,
     autenticacao: Union[None | list] = None,
-    header_arg=None,
+    header_arg: dict[str, str] | None = None,
     tempo_limite: Union[int | float] = 1,
     proxies: dict[str, str] = None,
 ) -> bool:
@@ -89,10 +91,6 @@ def baixar_arquivo(
         Retorna booleano, `True` quando a resposta HTTP for 200, `False`
         quando o arquivo for gravado mas a resposta HTTP for diferente de
         200.
-
-    Raises:
-        Repassa exceções de escrita de arquivo e exceções geradas por
-        `requisitar_url`.
 
     Examples:
         >>> from pathlib import Path
@@ -150,8 +148,6 @@ def baixar_webdriver(
 
     Raises:
         SystemError: Não foi possível criar a pasta base do webdriver.
-
-        Repassa exceções das funções de metadata, download e descompactação.
 
     Examples:
         >>> caminho_chrome = (
@@ -353,7 +349,7 @@ def iniciar_navegador(
     porta_webdriver: int = None,
     proxies: dict[str, str] = None,
     baixar_webdriver_previamente: bool = True,
-):
+) -> bool:
     """Inicia uma instância automatizada de um navegador.
 
     Parameters:
@@ -635,7 +631,7 @@ def autenticar_navegador(
     return False
 
 
-def abrir_pagina(url: str):
+def abrir_pagina(url: str) -> None:
     """Abre uma página web mediante a URL informada.
 
     Parameters:
@@ -643,9 +639,6 @@ def abrir_pagina(url: str):
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a página não possa ser aberta.
 
     Examples:
         >>> abrir_pagina(url='https://bing.com')
@@ -656,18 +649,15 @@ def abrir_pagina(url: str):
     esperar_pagina_carregar()
 
 
-def abrir_janela(url: str = None):
+def abrir_janela(url: str | None = None) -> None:
     """Abre uma nova janela/aba do navegador automatizado.
 
     Parameters:
         url: URL carregada na nova janela/aba. Quando `None`, abre uma janela
-        vazia conforme comportamento do navegador.
+            vazia conforme comportamento do navegador.
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso o script de abertura falhe.
 
     Examples:
         >>> abrir_janela()
@@ -678,17 +668,11 @@ def abrir_janela(url: str = None):
     _navegador.execute_script(f'window.open("{url}")')
 
 
-def atualizar_pagina():
+def atualizar_pagina() -> None:
     """Atualiza a página web atual.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a atualização falhe.
 
     Examples:
         >>> atualizar_pagina()
@@ -699,7 +683,7 @@ def atualizar_pagina():
     esperar_pagina_carregar()
 
 
-def trocar_para(id, tipo):
+def trocar_para(id: int | str, tipo: str) -> bool | str:
     """Troca de contexto da automação web mediante o tipo e o id informados.
 
     Parameters:
@@ -713,9 +697,6 @@ def trocar_para(id, tipo):
     Returns:
         Retorna `True` quando a troca é concluída, o texto do alerta quando
         `tipo='ALERT'` e `id='TEXT'`, ou `False` quando ocorrer erro.
-
-    Raises:
-        Não levanta exceções.
 
     Examples:
         >>> trocar_para(id=1, tipo='WINDOW')
@@ -762,17 +743,11 @@ def trocar_para(id, tipo):
         return False
 
 
-def coletar_id_janela():
+def coletar_id_janela() -> str:
     """Coleta o ID da janela/aba atual do navegador automatizado.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Retorna string com o handle da janela/aba atual.
-
-    Raises:
-        Repassa exceções caso não exista janela ativa.
 
     Examples:
         >>> id_janela = coletar_id_janela()
@@ -785,14 +760,8 @@ def coletar_id_janela():
 def coletar_nome_navegador_atual() -> str:
     """Coleta o nome do navegador atual em manipulação.
 
-    Parameters:
-        Não possui parâmetros.
-
     Returns:
         Retorna string com o nome do navegador.
-
-    Raises:
-        Repassa exceções caso o navegador não esteja iniciado.
 
     Examples:
         >>> nome = coletar_nome_navegador_atual()
@@ -802,17 +771,11 @@ def coletar_nome_navegador_atual() -> str:
     return nome_navegador
 
 
-def coletar_todas_ids_janelas():
+def coletar_todas_ids_janelas() -> list[str]:
     """Coleta uma lista de todos os ID's de janelas/abas do navegador.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Retorna lista de strings com os handles das janelas/abas abertas.
-
-    Raises:
-        Repassa exceções caso o navegador não esteja iniciado.
 
     Examples:
         >>> ids = coletar_todas_ids_janelas()
@@ -822,17 +785,11 @@ def coletar_todas_ids_janelas():
     return ids_janelas
 
 
-def esperar_pagina_carregar():
+def esperar_pagina_carregar() -> None:
     """Espera o carregamento total da página automatizada acontecer.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a espera falhe.
 
     Examples:
         >>> esperar_pagina_carregar()
@@ -846,17 +803,11 @@ def esperar_pagina_carregar():
             estado_pronto = True
 
 
-def voltar_pagina():
+def voltar_pagina() -> None:
     """Volta uma posição no histórico do navegador automatizado.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a navegação falhe.
 
     Examples:
         >>> voltar_pagina()
@@ -866,7 +817,7 @@ def voltar_pagina():
     esperar_pagina_carregar()
 
 
-def capturar_janela_em_imagem(imagem: Union[str, Path]):
+def capturar_janela_em_imagem(imagem: Union[str, Path]) -> bool:
     """Tira uma captura da janela automatizada e salva em imagem PNG.
 
     Parameters:
@@ -895,7 +846,10 @@ def capturar_janela_em_imagem(imagem: Union[str, Path]):
     return _navegador.save_screenshot(str(imagem_path))
 
 
-def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
+def centralizar_elemento(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> None:
     """Centraliza um elemento informado na janela do navegador automatizado.
 
     Parameters:
@@ -906,10 +860,6 @@ def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado ou quando o tipo
-        de seletor não é compatível com o script executado.
 
     Examples:
         >>> centralizar_elemento(
@@ -939,7 +889,11 @@ def centralizar_elemento(seletor, tipo_elemento='CSS_SELECTOR'):
         )
 
 
-def executar_script(script, args='', assincrono=False):
+def executar_script(
+    script: str,
+    args: Any = '',
+    assincrono: bool = False,
+) -> Any:
     """Executa um script Javascript na página automatizada.
 
     Parameters:
@@ -950,9 +904,6 @@ def executar_script(script, args='', assincrono=False):
 
     Returns:
         Retorna o valor devolvido pelo JavaScript executado.
-
-    Raises:
-        Repassa exceções caso o script falhe.
 
     Examples:
         >>> executar_script(script='return document.title')
@@ -981,17 +932,11 @@ def executar_script(script, args='', assincrono=False):
     return retultado_executar_script
 
 
-def retornar_codigo_fonte():
+def retornar_codigo_fonte() -> str:
     """Coleta e retorna o código HTML da página automatizada.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Retorna string com o HTML da página atual.
-
-    Raises:
-        Repassa exceções caso o navegador não esteja iniciado.
 
     Examples:
         >>> retornar_codigo_fonte()
@@ -1014,7 +959,7 @@ def aguardar_elemento(
     tempo: int = 30,
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
-):
+) -> bool:
     """Aguarda um comportamento esperado acontecer no navegador.
 
     Parameters:
@@ -1036,9 +981,6 @@ def aguardar_elemento(
         Retorna booleano, `True` quando a espera é concluída, `False` quando
         ocorre erro ou timeout.
 
-    Raises:
-        Não levanta exceções.
-
     Examples:
         >>> aguardar_elemento(
         ...     identificador='span[id="salvar"]',
@@ -1054,7 +996,7 @@ def aguardar_elemento(
         True
 
         >>> from urllib.parse import quote
-        ... html_shadow = '''
+        >>> html_shadow = '''
         ... <div id="host"></div>
         ... <script>
         ... document.querySelector("#host")
@@ -1063,12 +1005,12 @@ def aguardar_elemento(
         ... </script>
         ... '''
         >>> abrir_pagina(f'data:text/html,{quote(html_shadow)}')
-        ... aguardar_elemento>>> aguardar_elemento(
-        ...    identificador='button[id="interno"]',
-        ...    tipo_elemento='CSS_SELECTOR',
-        ...    elemento_shadowroot='div[id="host"]',
-        ...    tipo_elemento_shadowroot='CSS_SELECTOR',
-        ...    tempo='5',
+        >>> aguardar_elemento(
+        ...     identificador='button[id="interno"]',
+        ...     tipo_elemento='CSS_SELECTOR',
+        ...     elemento_shadowroot='div[id="host"]',
+        ...     tipo_elemento_shadowroot='CSS_SELECTOR',
+        ...     tempo=5,
         ... )
         True
     """
@@ -1262,7 +1204,10 @@ def aguardar_elemento(
         return False
 
 
-def procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
+def procurar_muitos_elementos(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> list[str]:
     """Procura todos os elementos presentes que correspondam ao informado.
 
     Parameters:
@@ -1274,12 +1219,9 @@ def procurar_muitos_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
     Returns:
         Retorna lista de strings com o texto de cada elemento localizado.
 
-    Raises:
-        Repassa exceções quando a busca ou a centralização falha.
-
     Examples:
         >>> procurar_muitos_elementos(
-        ...     seletor='//td[@class='item']',
+        ...     seletor="//td[@class='item']",
         ...     tipo_elemento='XPATH',
         ... )
         ['A', 'B']
@@ -1305,7 +1247,7 @@ def procurar_elemento(
     tipo_elemento: str = 'CSS_SELECTOR',
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
-):
+) -> bool:
     """Procura um elemento presente que corresponda ao informado.
 
     Parameters:
@@ -1322,9 +1264,6 @@ def procurar_elemento(
     Returns:
         Retorna booleano, `True` quando o elemento é encontrado, `False`
         quando a busca falha.
-
-    Raises:
-        Não levanta exceções.
 
     Examples:
         >>> procurar_elemento(
@@ -1372,7 +1311,7 @@ def selecionar_elemento(
     seletor: str,
     valor: str,
     tipo_elemento: str = 'CSS_SELECTOR',
-):
+) -> bool:
     """Seleciona em elemento de seleção um valor pelo texto visível.
 
     Parameters:
@@ -1384,10 +1323,6 @@ def selecionar_elemento(
 
     Returns:
         Retorna booleano, `True` quando a seleção é concluída.
-
-    Raises:
-        Repassa exceções quando o elemento não existe ou quando o valor
-        visível não é encontrado.
 
     Examples:
         >>> selecionar_elemento(
@@ -1412,7 +1347,10 @@ def selecionar_elemento(
     return True
 
 
-def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
+def contar_elementos(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> int:
     """Conta todos os elementos presentes que correspondam ao informado.
 
     Parameters:
@@ -1423,9 +1361,6 @@ def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
 
     Returns:
         Retorna inteiro com a quantidade de elementos encontrados.
-
-    Raises:
-        Repassa exceções quando a busca ou a centralização falha.
 
     Examples:
         >>> contar_elementos(
@@ -1441,7 +1376,10 @@ def contar_elementos(seletor, tipo_elemento='CSS_SELECTOR'):
     return len(elementos)
 
 
-def extrair_texto(seletor, tipo_elemento='CSS_SELECTOR'):
+def extrair_texto(
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> str:
     """Extrai o texto de um elemento informado.
 
     Parameters:
@@ -1452,9 +1390,6 @@ def extrair_texto(seletor, tipo_elemento='CSS_SELECTOR'):
 
     Returns:
         Retorna string com o texto do elemento localizado.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado.
 
     Examples:
         >>> extrair_texto(
@@ -1476,7 +1411,7 @@ def coletar_atributo(
     atributo: str,
     tipo_elemento: str = 'CSS_SELECTOR',
     metodo: str = 'get_attribute',
-):
+) -> str:
     """Coleta o valor de um atributo ou propriedade CSS de um elemento.
 
     Parameters:
@@ -1493,8 +1428,6 @@ def coletar_atributo(
 
     Raises:
         ValueError: `metodo` precisa ser um dos métodos aceitos.
-
-        Repassa exceções quando o elemento não é encontrado.
 
     Examples:
         >>> coletar_atributo(
@@ -1532,11 +1465,11 @@ def coletar_atributo(
 
 
 def alterar_atributo(
-    seletor,
-    atributo,
-    novo_valor,
-    tipo_elemento='CSS_SELECTOR',
-):
+    seletor: str,
+    atributo: str,
+    novo_valor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> str:
     """Altera uma propriedade de um elemento.
 
     Parameters:
@@ -1549,9 +1482,6 @@ def alterar_atributo(
 
     Returns:
         Retorna o valor do atributo após a alteração.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado.
 
     Examples:
         >>> alterar_atributo(
@@ -1592,7 +1522,7 @@ def clicar_elemento(
     tempo_alerta: int = 30,
     elemento_shadowroot: str = None,
     tipo_elemento_shadowroot: str = None,
-):
+) -> bool | str:
     """Clica em um elemento informado.
 
     Parameters:
@@ -1614,10 +1544,6 @@ def clicar_elemento(
         Retorna `True` quando o clique é concluído sem alerta. Quando
         `com_alerta=True`, retorna o último texto coletado do alerta ou string
         vazia quando nenhum alerta for encontrado.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado ou quando o
-        clique falha.
 
     Examples:
         >>> clicar_elemento(
@@ -1692,7 +1618,11 @@ def clicar_elemento(
     return True
 
 
-def validar_porta(ip, porta, tempo_limite=1):
+def validar_porta(
+    ip: str,
+    porta: int,
+    tempo_limite: int | float = 1,
+) -> bool:
     """Valida se uma porta TCP informada está aberta para conexão.
 
     Parameters:
@@ -1703,9 +1633,6 @@ def validar_porta(ip, porta, tempo_limite=1):
     Returns:
         Retorna booleano, `True` quando a conexão é aceita, `False` quando a
         porta não responde dentro do tempo limite.
-
-    Raises:
-        Repassa exceções caso a criação do socket falhe.
 
     Examples:
         >>> validar_porta(ip='127.0.0.1', porta='80', tempo_limite=10)
@@ -1724,8 +1651,11 @@ def validar_porta(ip, porta, tempo_limite=1):
 
 
 def escrever_em_elemento(
-    seletor, texto, tipo_elemento='CSS_SELECTOR', performar: bool = False
-):
+    seletor: str,
+    texto: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+    performar: bool = False,
+) -> None:
     """Digita dentro de um elemento informado.
 
     Parameters:
@@ -1738,10 +1668,6 @@ def escrever_em_elemento(
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado ou
-        quando a digitação falha.
 
     Examples:
         >>> escrever_em_elemento(
@@ -1774,8 +1700,10 @@ def escrever_em_elemento(
 
 
 def limpar_campo(
-    seletor, tipo_elemento='CSS_SELECTOR', performar: bool = False
-):
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+    performar: bool = False,
+) -> None:
     """Limpa o valor de um campo informado.
 
     Parameters:
@@ -1787,10 +1715,6 @@ def limpar_campo(
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado ou quando a
-        limpeza falha.
 
     Examples:
         >>> limpar_campo(
@@ -1817,17 +1741,11 @@ def limpar_campo(
     esperar_pagina_carregar()
 
 
-def maximizar_janela():
+def maximizar_janela() -> None:
     """Maximiza a janela automatizada.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a janela não possa ser maximizada.
 
     Examples:
         >>> maximizar_janela()
@@ -1836,7 +1754,11 @@ def maximizar_janela():
     _navegador.maximize_window()
 
 
-def performar(acao, seletor, tipo_elemento='CSS_SELECTOR'):
+def performar(
+    acao: str,
+    seletor: str,
+    tipo_elemento: str = 'CSS_SELECTOR',
+) -> bool:
     """Simula uma ação real de mouse em um elemento.
 
     Parameters:
@@ -1849,10 +1771,6 @@ def performar(acao, seletor, tipo_elemento='CSS_SELECTOR'):
 
     Returns:
         Retorna booleano, `True` ao final da função.
-
-    Raises:
-        Repassa exceções quando o elemento não é encontrado ou quando a ação
-        falha.
 
     Examples:
         >>> performar(
@@ -1885,7 +1803,7 @@ def print_para_pdf(
     fundo: bool = None,
     encolher_para_caber: bool = None,
     orientacao: int = None,
-):
+) -> bool:
     """Realiza o print da página atual e salva em um arquivo PDF.
 
     Parameters:
@@ -1901,9 +1819,6 @@ def print_para_pdf(
     Returns:
         Retorna booleano, `True` quando o PDF é criado, `False` quando ocorre
         erro.
-
-    Raises:
-        Não levanta exceções.
 
     Examples:
         >>> from pathlib import Path
@@ -1968,7 +1883,7 @@ def requisitar_url(
     tempo_limite: Union[int, float] = 1,
     proxies: dict[str, str] = None,
     metodo: str = 'GET',
-):
+) -> Response:
     """Faz uma requisição HTTP e retorna a resposta.
 
     Parameters:
@@ -1986,8 +1901,6 @@ def requisitar_url(
 
     Raises:
         SystemError: `metodo` precisa ser `GET` ou `HEAD`.
-
-        Repassa exceções quando a requisição falha.
 
     Examples:
         >>> resposta = requisitar_url(
@@ -2023,7 +1936,7 @@ def requisitar_url(
     return resposta
 
 
-def fechar_janela(janela):
+def fechar_janela(janela: int) -> None:
     """Fecha uma janela/aba do navegador automatizado.
 
     Parameters:
@@ -2031,9 +1944,6 @@ def fechar_janela(janela):
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso a janela não exista ou não possa ser fechada.
 
     Examples:
         >>> id_principal = coletar_id_janela()
@@ -2043,7 +1953,7 @@ def fechar_janela(janela):
     _navegador.close()
 
 
-def fechar_janelas_menos_essa(id_janela):
+def fechar_janelas_menos_essa(id_janela: str) -> None:
     """Fecha todas as janelas/abas do navegador menos a informada.
 
     Parameters:
@@ -2051,10 +1961,6 @@ def fechar_janelas_menos_essa(id_janela):
 
     Returns:
         Não possui retorno.
-
-    Raises:
-        Repassa exceções caso alguma janela não possa ser selecionada ou
-            fechada.
 
     Examples:
         >>> id_principal = coletar_id_janela()
@@ -2067,18 +1973,12 @@ def fechar_janelas_menos_essa(id_janela):
             _navegador.close()
 
 
-def encerrar_navegador():
+def encerrar_navegador() -> bool:
     """Fecha a instância do navegador automatizado.
-
-    Parameters:
-        Não possui parâmetros.
 
     Returns:
         Retorna booleano, `True` quando todas as janelas são fechadas e o
         navegador é encerrado, `False` quando ocorre erro.
-
-    Raises:
-        Não levanta exceções.
 
     Examples:
         >>> encerrar_navegador()
