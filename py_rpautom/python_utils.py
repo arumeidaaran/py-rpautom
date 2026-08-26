@@ -1,5 +1,6 @@
 """Módulo para facilidades no manuseio de recursos comuns no desenvolvimento."""
 
+from typing import Union
 
 __all__ = [
     'abrir_arquivo_em_bytes',
@@ -47,11 +48,26 @@ __all__ = [
     'transformar_arquivo_em_base64',
 ]
 
-from typing import Union
-
 
 def abrir_arquivo_em_bytes(caminho):
-    """Abre em bytes um arquivo de texto no caminho informado."""
+    """Lê todo o conteúdo de um arquivo e devolve seus bytes crus.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser lido, relativo ou absoluto.
+
+    Retorna:
+        bytes: Conteúdo integral do arquivo.
+
+    Exceções:
+        FileNotFoundError: Quando o caminho informado não existe.
+
+    Exemplos:
+        >>> conteudo = abrir_arquivo_em_bytes(
+        ...     caminho='logo.png',
+        ... )
+        >>> conteudo[:4]
+        b'\\x89PNG'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -68,7 +84,36 @@ def abrir_arquivo_excel(
     manter_macro: bool = True,
     manter_links: bool = True,
 ):
-    """Abre um arquivo de Excel no caminho informado."""
+    """Lê uma planilha do Excel e devolve seu conteúdo como lista de linhas.
+
+    Parâmetros:
+        arquivo_excel: Caminho do arquivo Excel a ser aberto. Aceita os
+            formatos `.xls`, `.xlsx` e `.xlsm`.
+        guia: Nome da aba a ser lida. Aceita o nome de uma guia ou string
+            vazia; string vazia usa a aba ativa e, nos `.xls`, a primeira.
+        manter_macro: Aceita `True` para preservar o código VBA de arquivos
+            `.xlsm` e `False` para não preservá-lo. Ignorado em `.xls`.
+        manter_links: Aceita `True` para preservar vínculos com pastas de
+            trabalho externas e `False` para não preservá-los. Ignorado em
+            `.xls`.
+
+    Retorna:
+        list[list]: Uma lista por linha da planilha, cada uma com os
+            valores das células na ordem das colunas. Células vazias vêm
+            como `None`.
+
+    Exceções:
+        FileNotFoundError: Quando o arquivo não existe.
+        KeyError: Quando a guia informada não existe na planilha.
+
+    Exemplos:
+        >>> tabela = abrir_arquivo_excel(
+        ...     arquivo_excel='base.xlsx',
+        ...     guia='Clientes',
+        ... )
+        >>> tabela[0]
+        ['Nome', 'CPF', 'Limite']
+    """
 
     # Importa recursos do módulo openpyxl
     import xlrd  # type: ignore
@@ -134,7 +179,34 @@ def abrir_arquivo_pdf(
     paginacao: Union[int | tuple[int]] = 0,
     orientacao: int = 0,
 ):
-    """Abre um arquivo de word no caminho informado."""
+    """Extrai o texto de um arquivo PDF, página a página.
+
+    Parâmetros:
+        arquivo_pdf: Caminho do arquivo PDF a ser lido.
+        senha_pdf: Senha do PDF, quando protegido. `None` para PDFs
+            sem proteção.
+        paginacao: Página ou páginas a extrair, contadas a partir de 1.
+            Aceita um `int` ou uma tupla de `int`. Aceita `0` para o
+            documento inteiro ou números a partir de `1` para páginas
+            específicas.
+        orientacao: Orientação considerada durante a extração. Aceita `0`,
+            `90`, `180` ou `270` graus.
+
+    Retorna:
+        list[list[str]]: Uma lista por página, cada uma contendo as
+            linhas de texto daquela página.
+
+    Exceções:
+        TypeError: Quando `paginacao` contém itens não numéricos.
+
+    Exemplos:
+        >>> paginas = abrir_arquivo_pdf(
+        ...     arquivo_pdf='contrato.pdf',
+        ...     paginacao=(1, 2),
+        ... )
+        >>> paginas[0][0]
+        'CONTRATO DE PRESTAÇÃO DE SERVIÇOS'
+    """
 
     # Importa recursos do módulo PyPDF2
     from PyPDF2 import PdfReader
@@ -175,7 +247,7 @@ def abrir_arquivo_pdf(
             else:
                 # levanta exceção de tipo incorreto
                 raise TypeError(
-                    'Parâmetro ``paginacao`` aceita somente ítens numéricos (int).'
+                    'Parâmetro `paginacao` aceita somente ítens numéricos (int).'
                 )
 
     # define um valor padrão e inicial à lista
@@ -193,7 +265,28 @@ def abrir_arquivo_pdf(
 
 
 def abrir_arquivo_texto(caminho, encoding='utf8'):
-    """Abre um arquivo de texto no caminho informado."""
+    """Lê um arquivo de texto e devolve todo o seu conteúdo em uma string.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser lido.
+        encoding: Codificação usada na leitura. Use 'latin-1' ou
+            'cp1252' para arquivos gerados por sistemas legados.
+
+    Retorna:
+        str: Conteúdo completo do arquivo, com as quebras de linha
+            preservadas.
+
+    Exceções:
+        FileNotFoundError: Quando o caminho informado não existe.
+        UnicodeDecodeError: Quando o encoding informado não corresponde
+            ao do arquivo.
+
+    Exemplos:
+        >>> abrir_arquivo_texto(
+        ...     caminho='config.ini',
+        ... )
+        '[padrao]\\nusuario = admin\\n'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -209,7 +302,32 @@ def adicionar_ao_zip(
     arquivo_destino: str,
     recursivo: bool = False,
 ):
-    """Adiciona um caminho à um arquivo zip informado."""
+    """Acrescenta arquivos a um `.zip` já existente, sem recriá-lo.
+
+    Parâmetros:
+        caminho: Arquivo ou pasta a ser adicionado ao pacote.
+        arquivo_destino: Caminho do `.zip` que receberá o conteúdo.
+            É criado caso ainda não exista.
+        recursivo: Aceita `True` para tratar `caminho` como pasta e
+            incluir todo o seu conteúdo, ou `False` para adicionar somente
+            o arquivo informado.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exemplos:
+        >>> adicionar_ao_zip(
+        ...     caminho='relatorio.pdf',
+        ...     arquivo_destino='lote.zip',
+        ... )
+        True
+        >>> adicionar_ao_zip(
+        ...     caminho='saida',
+        ...     arquivo_destino='lote.zip',
+        ...     recursivo=True,
+        ... )
+        True
+    """
     # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
@@ -246,7 +364,29 @@ def alterar_arquivo_texto(
     encoding_entrada='utf8',
     encoding_saida='utf8',
 ):
-    """Abre um arquivo de texto no caminho informado."""
+    """Substitui o conteúdo de linhas de um arquivo de texto no próprio local.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser alterado.
+        linha_atual: Trecho procurado. A linha é considerada candidata
+            quando o contém, não sendo necessário casar a linha inteira.
+        linha_alterada: Texto que substituirá a linha encontrada.
+        multilinhas: Aceita `True` para alterar todas as ocorrências ou
+            `False` para alterar somente a primeira.
+        encoding_entrada: Codificação usada para ler o arquivo.
+        encoding_saida: Codificação usada para regravá-lo.
+
+    Retorna:
+        list[str]: As linhas do arquivo já com as alterações aplicadas.
+
+    Exemplos:
+        >>> alterar_arquivo_texto(
+        ...     caminho='config.ini',
+        ...     linha_atual='ambiente=dev',
+        ...     linha_alterada='ambiente=prod',
+        ... )
+        ['[padrao]', 'ambiente=prod']
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -294,7 +434,20 @@ def alterar_arquivo_texto(
 
 
 def caminho_existente(caminho):
-    """Verifica se um arquivo no caminho informado existe."""
+    """Informa se um arquivo ou pasta existe no caminho indicado.
+
+    Parâmetros:
+        caminho: Caminho a ser verificado, relativo ou absoluto.
+
+    Retorna:
+        bool: `True` se o caminho existe, `False` caso contrário.
+
+    Exemplos:
+        >>> caminho_existente(
+        ...     caminho='entrada/base.xlsx',
+        ... )
+        True
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -307,7 +460,14 @@ def caminho_existente(caminho):
 
 
 def cls():
-    """Limpa a visualização do terminal/PowerShell."""
+    """Limpa a tela do terminal.
+
+    Retorna:
+        None
+
+    Exemplos:
+        >>> cls()
+    """
 
     comando = [
         'powershell',
@@ -319,8 +479,20 @@ def cls():
 
 
 def coletar_arvore_caminho(caminho):
-    """Retorna os arquivos existentes em um diretório se seus
-    respectivos sub-diretórios segundo o caminho informado."""
+    """Devolve a pasta que contém o caminho informado.
+
+    Parâmetros:
+        caminho: Caminho de referência, relativo ou absoluto.
+
+    Retorna:
+        str: Caminho absoluto do diretório que contém o item informado.
+
+    Exemplos:
+        >>> coletar_arvore_caminho(
+        ...     caminho='entrada/base.xlsx',
+        ... )
+        'C:\\\\projeto\\\\entrada'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -338,8 +510,20 @@ def coletar_arvore_caminho(caminho):
 
 
 def coletar_caminho_absoluto(caminho):
-    """Retorna os arquivos existentes em um diretório se seus
-    respectivos sub-diretórios segundo o caminho informado."""
+    """Converte um caminho relativo em caminho absoluto.
+
+    Parâmetros:
+        caminho: Caminho a ser convertido.
+
+    Retorna:
+        str: Caminho absoluto correspondente.
+
+    Exemplos:
+        >>> coletar_caminho_absoluto(
+        ...     caminho='saida',
+        ... )
+        'C:\\\\projeto\\\\saida'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -354,7 +538,25 @@ def coletar_caminho_absoluto(caminho):
 
 
 def coletar_extensao_arquivo(caminho):
-    """Coleta a extensão de um arquivo no caminho informado."""
+    """Devolve as extensões de um arquivo.
+
+    Parâmetros:
+        caminho: Caminho ou nome do arquivo.
+
+    Retorna:
+        list[str]: Extensões encontradas, com o ponto, na ordem em que
+            aparecem no nome. Lista vazia se não houver extensão.
+
+    Exemplos:
+        >>> coletar_extensao_arquivo(
+        ...     caminho='base.xlsx',
+        ... )
+        ['.xlsx']
+        >>> coletar_extensao_arquivo(
+        ...     caminho='backup.tar.gz',
+        ... )
+        ['.tar', '.gz']
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -366,7 +568,15 @@ def coletar_extensao_arquivo(caminho):
 
 
 def coletar_idioma_so():
-    """Coleta o idioma atual do sistema operacional."""
+    """Devolve o idioma configurado na interface do Windows.
+
+    Retorna:
+        str: Localidade do usuário no formato `idioma_REGIÃO`.
+
+    Exemplos:
+        >>> coletar_idioma_so()
+        'pt_BR'
+    """
     # Importa recursos do módulo ctypes
     import ctypes
 
@@ -387,7 +597,18 @@ def coletar_idioma_so():
 
 
 def coletar_versao_so():
-    """Coleta a versao do sistema operacional."""
+    """Devolve os dados de identificação do sistema operacional.
+
+    Retorna:
+        dict: Dicionário com as chaves `sistema` (nome do SO),
+            `release` (versão principal), `version` (build detalhado) e
+            `machine` (arquitetura do processador).
+
+    Exemplos:
+        >>> versao = coletar_versao_so()
+        >>> versao['sistema']
+        'Windows'
+    """
     # Importa recursos do módulo sys
     from platform import machine, release, system, version
 
@@ -402,7 +623,20 @@ def coletar_versao_so():
 
 
 def coletar_nome_arquivo(caminho):
-    """Coleta o nome de um arquivo no caminho informado."""
+    """Extrai o nome de um arquivo, sem a pasta e sem a extensão.
+
+    Parâmetros:
+        caminho: Caminho ou nome do arquivo.
+
+    Retorna:
+        str: Nome do arquivo sem diretório e sem a última extensão.
+
+    Exemplos:
+        >>> coletar_nome_arquivo(
+        ...     caminho='entrada/base_clientes.xlsx',
+        ... )
+        'base_clientes'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -414,7 +648,20 @@ def coletar_nome_arquivo(caminho):
 
 
 def coletar_nome_guias_arquivo_excel(arquivo_excel):
-    """Coleta as guias existentes no arquivo Excel informado."""
+    """Lista os nomes das abas de uma planilha do Excel.
+
+    Parâmetros:
+        arquivo_excel: Caminho do arquivo Excel a ser inspecionado.
+
+    Retorna:
+        list[str]: Nomes das abas, na ordem do arquivo.
+
+    Exemplos:
+        >>> coletar_nome_guias_arquivo_excel(
+        ...     arquivo_excel='base.xlsx',
+        ... )
+        ['Clientes', 'Contratos', 'Resumo']
+    """
 
     # Importa recursos do módulo openpyxl
     from openpyxl import load_workbook
@@ -436,7 +683,24 @@ def coletar_nome_guias_arquivo_excel(arquivo_excel):
 
 
 def coletar_pid(nome_processo):
-    """Coleta o idioma atual do sistema operacional."""
+    """Localiza os processos em execução cujo nome contenha o texto informado.
+
+    Parâmetros:
+        nome_processo: Trecho do nome do executável a procurar
+            (ex.: 'excel' ou 'EXCEL.EXE').
+
+    Retorna:
+        list[dict]: Um dicionário por processo encontrado, com as chaves
+            `pid`, `name` e `create_time`; esta última contém o instante de
+            criação como timestamp Unix em segundos. Lista vazia se nenhum
+            processo corresponder.
+
+    Exemplos:
+        >>> coletar_pid(
+        ...     nome_processo='notepad',
+        ... )
+        [{'pid': 10432, 'name': 'notepad.exe', 'create_time': 1690000000.0}]
+    """
     # Importa recursos do módulo os
     import psutil
 
@@ -469,6 +733,23 @@ def coletar_pid(nome_processo):
 
 
 def coletar_tamanho(caminho):
+    """Devolve o tamanho de um arquivo, em bytes.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser medido.
+
+    Retorna:
+        int: Tamanho do arquivo em bytes.
+
+    Exceções:
+        FileNotFoundError: Quando o caminho informado não existe.
+
+    Exemplos:
+        >>> coletar_tamanho(
+        ...     caminho='saida/relatorio.pdf',
+        ... )
+        284517
+    """
     import os
 
     caminho_interno = coletar_caminho_absoluto(caminho)
@@ -477,6 +758,25 @@ def coletar_tamanho(caminho):
 
 
 def coletar_versao_arquivo(caminho_arquivo):
+    """Lê a versão gravada nas propriedades de um arquivo do Windows.
+
+    Parâmetros:
+        caminho_arquivo: Caminho absoluto do arquivo a ser inspecionado.
+
+    Retorna:
+        tuple[int, int, int, int]: Versão em quatro partes, na ordem
+            maior, menor, build e revisão.
+
+    Exceções:
+        OSError: Quando o arquivo não existe ou não possui informação
+            de versão gravada.
+
+    Exemplos:
+        >>> coletar_versao_arquivo(
+        ...     caminho_arquivo=r'C:\\Arquivos\\chrome.exe',
+        ... )
+        (114, 0, 5735, 199)
+    """
     from ctypes import (
         POINTER,
         Structure,
@@ -560,7 +860,24 @@ def compactar(
     arquivo_destino: str,
     modo: str = 'w',
 ):
-    """Compacta um caminho para o arquivo zip informado."""
+    """Gera um arquivo `.zip` com todo o conteúdo de uma pasta.
+
+    Parâmetros:
+        caminho: Pasta cujo conteúdo será compactado.
+        arquivo_destino: Caminho do `.zip` a ser gerado.
+        modo: Modo de abertura do ZIP. Aceita `'w'` para recriar o arquivo
+            ou `'a'` para acrescentar ao conteúdo existente.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exemplos:
+        >>> compactar(
+        ...     caminho='saida',
+        ...     arquivo_destino='saida.zip',
+        ... )
+        True
+    """
     # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
@@ -587,7 +904,35 @@ def converter_pdf_em_imagem(
     zoom: float = 1,
     orientacao: int = 0,
 ):
-    """Converte cada página de um arquivo PDF em imagem."""
+    """Converte cada página de um PDF em um arquivo de imagem PNG.
+
+    Parâmetros:
+        arquivo_pdf: Caminho do PDF a ser convertido.
+        caminho_saida: Pasta que receberá as imagens. Deve existir.
+        alpha: Aceita `True` para manter o canal de transparência ou
+            `False` para aplicar fundo branco.
+        zoom: Fator de escala aplicado à página. Aceita número inteiro ou
+            decimal; `1` mantém a escala original e valores maiores
+            aumentam a resolução.
+        orientacao: Rotação aplicada antes de gerar a imagem. Aceita graus
+            inteiros; `0`, `90`, `180` e `270` representam as
+            orientações ortogonais.
+
+    Retorna:
+        bool: `True` quando todas as páginas são convertidas.
+
+    Exceções:
+        Exception: Repassa qualquer erro ocorrido na leitura do PDF ou
+            na gravação das imagens.
+
+    Exemplos:
+        >>> converter_pdf_em_imagem(
+        ...     arquivo_pdf='contrato.pdf',
+        ...     caminho_saida='imagens',
+        ...     zoom=2,
+        ... )
+        True
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -632,8 +977,27 @@ def converter_pdf_em_imagem(
 
 
 def copiar_arquivo(arquivo, caminho_destino):
-    """Copia um arquivo de um caminho para
-    outro caminho conforme informado."""
+    """Copia um arquivo para outro local, preservando seus metadados.
+
+    Parâmetros:
+        arquivo: Caminho do arquivo de origem.
+        caminho_destino: Pasta de destino ou novo caminho completo do
+            arquivo.
+
+    Retorna:
+        str: Caminho do arquivo já copiado.
+
+    Exceções:
+        FileNotFoundError: Quando a origem ou a pasta de destino não
+            existem.
+
+    Exemplos:
+        >>> copiar_arquivo(
+        ...     arquivo='base.xlsx',
+        ...     caminho_destino='backup',
+        ... )
+        'C:\\\\projeto\\\\backup\\\\base.xlsx'
+    """
 
     # coleta o caminho absoluto do arquivo
     arquivo = coletar_caminho_absoluto(arquivo)
@@ -649,7 +1013,25 @@ def copiar_arquivo(arquivo, caminho_destino):
 
 
 def copiar_pasta(pasta: str, caminho_destino: str):
-    """Copia uma pasta de um caminho para outro caminho conforme informado."""
+    """Copia uma pasta inteira, com todo o seu conteúdo, para outro local.
+
+    Parâmetros:
+        pasta: Caminho da pasta de origem.
+        caminho_destino: Pasta onde a cópia será criada.
+
+    Retorna:
+        str: Caminho absoluto da pasta recém-criada no destino.
+
+    Exceções:
+        FileExistsError: Quando já existe uma pasta de mesmo nome no destino.
+
+    Exemplos:
+        >>> copiar_pasta(
+        ...     pasta='saida',
+        ...     caminho_destino='backup',
+        ... )
+        'C:\\\\projeto\\\\backup\\\\saida'
+    """
 
     # Importa recursos do módulo Path
     from pathlib import Path
@@ -680,7 +1062,29 @@ def criar_arquivo_texto(
     em_bytes: bool = False,
 ):
     # Importa recursos do módulo Path
-    """Cria um arquivo de texto no caminho informado."""
+    """Cria um arquivo com o conteúdo informado, substituindo o anterior.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser criado.
+        dado: Conteúdo a ser gravado. Deve ser `str` no modo texto e
+            `bytes` quando `em_bytes` for `True`.
+        encoding: Codificação da gravação. Ignorado no modo binário.
+        em_bytes: Aceita `True` para gravar em modo binário ou `False`
+            para gravar como texto usando `encoding`.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exceções:
+        FileNotFoundError: Quando a pasta de destino não existe.
+
+    Exemplos:
+        >>> criar_arquivo_texto(
+        ...     caminho='saida/log.txt',
+        ...     dado='inicio do processo',
+        ... )
+        True
+    """
     from pathlib import Path
 
     # caso em_bytes não for verdadeiro
@@ -697,7 +1101,23 @@ def criar_arquivo_texto(
 
 
 def criar_pasta(caminho):
-    """Cria pasta com caminho e nome informado."""
+    """Cria uma pasta, incluindo os níveis intermediários que faltarem.
+
+    Parâmetros:
+        caminho: Caminho da pasta a ser criada.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exceções:
+        FileExistsError: Quando a pasta informada já existe.
+
+    Exemplos:
+        >>> criar_pasta(
+        ...     caminho='saida/2024/janeiro',
+        ... )
+        True
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -713,7 +1133,27 @@ def criar_pasta(caminho):
 
 
 def descompactar(arquivo, caminho_destino, senha_arquivo=None):
-    """Descompacta um arquivo para o caminho informado."""
+    """Extrai todo o conteúdo de um arquivo `.zip` para uma pasta.
+
+    Parâmetros:
+        arquivo: Caminho do `.zip` a ser extraído.
+        caminho_destino: Pasta que receberá o conteúdo.
+        senha_arquivo: Aceita a senha do pacote em `bytes` ou `None` para
+            arquivos sem senha.
+
+    Retorna:
+        None
+
+    Exceções:
+        RuntimeError: Quando o pacote exige senha e ela não foi
+            informada ou está incorreta.
+
+    Exemplos:
+        >>> descompactar(
+        ...     arquivo='lote.zip',
+        ...     caminho_destino='entrada',
+        ... )
+    """
     # Importa recursos do módulo zipfile
     from zipfile import ZipFile
 
@@ -728,7 +1168,29 @@ def escrever_em_arquivo(
     encoding='utf8',
     nova_linha=None,
 ):
-    """salva o conteúdo informado em um arquivo de texto também informado."""
+    """Grava texto em um arquivo, sobrescrevendo ou acrescentando ao final.
+
+    Parâmetros:
+        arquivo: Caminho do arquivo a ser gravado.
+        conteudo: Texto a ser escrito.
+        modo: Modo de abertura. Aceita `'w'` para sobrescrever o arquivo ou
+            `'a'` para acrescentar ao final.
+        encoding: Codificação usada na gravação.
+        nova_linha: Terminador acrescentado após o conteúdo. Aceita
+            `'\\r'`, `'\\n'` ou `'\\r\\n'`; qualquer outro valor,
+            inclusive `None`, não acrescenta nada.
+
+    Retorna:
+        None
+
+    Exemplos:
+        >>> escrever_em_arquivo(
+        ...     arquivo='log.txt',
+        ...     conteudo='etapa concluida',
+        ...     modo='a',
+        ...     nova_linha='\\n',
+        ... )
+    """
     from pathlib import Path
 
     caminho_arquivo = Path(arquivo)
@@ -753,7 +1215,24 @@ def escrever_em_arquivo(
 
 
 def excluir_arquivo(caminho):
-    """Exclui um arquivo no caminho informado."""
+    """Exclui definitivamente um arquivo do disco.
+
+    Parâmetros:
+        caminho: Caminho do arquivo a ser excluído.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exceções:
+        FileNotFoundError: Quando o arquivo não existe.
+        PermissionError: Quando o arquivo está aberto em outro programa.
+
+    Exemplos:
+        >>> excluir_arquivo(
+        ...     caminho='temp/rascunho.txt',
+        ... )
+        True
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -767,8 +1246,27 @@ def excluir_arquivo(caminho):
 
 
 def excluir_pasta(caminho, vazia: bool = True):
-    """Exclui pasta no caminho informado. Caso a pasta não esteja vazia,
-    informe explicitamente no parâmetro 'vazia'."""
+    """Exclui uma pasta, opcionalmente junto com todo o seu conteúdo.
+
+    Parâmetros:
+        caminho: Caminho da pasta a ser excluída.
+        vazia: Aceita `True` para exigir que a pasta esteja vazia ou
+            `False` para remover recursivamente todo o seu conteúdo.
+
+    Retorna:
+        bool: `True` quando a operação é concluída.
+
+    Exceções:
+        OSError: Quando `vazia` é `True` e a pasta não está vazia.
+        FileNotFoundError: Quando a pasta não existe.
+
+    Exemplos:
+        >>> excluir_pasta(
+        ...     caminho='temp',
+        ...     vazia=False,
+        ... )
+        True
+    """
 
     caminho_interno = coletar_caminho_absoluto(caminho)
 
@@ -800,7 +1298,36 @@ def executar_comando_terminal(
     nova_linha: bool = False,
     diretorio_execucao: str = None,
 ):
-    """Executa um comando de terminal."""
+    """Executa um comando do sistema e devolve o resultado da execução.
+
+    Parâmetros:
+        comando: Comando e argumentos, um por item da lista
+            (ex.: `['ping', '-n', '1', 'localhost']`).
+        tempo_limite: Tempo máximo de execução, em segundos. `None`
+            aguarda indefinidamente.
+        nova_linha: Aceita `True` para devolver as saídas como texto ou
+            `False` para devolvê-las como `bytes`.
+        diretorio_execucao: Pasta onde o comando será executado.
+            `None` usa o diretório de trabalho atual.
+
+    Retorna:
+        subprocess.CompletedProcess: Objeto com `returncode`,
+            `stdout` e `stderr` da execução.
+
+    Exceções:
+        CalledProcessError: Quando o comando retorna código diferente
+            de zero.
+        TimeoutExpired: Quando o tempo limite é ultrapassado.
+        FileNotFoundError: Quando o executável não é encontrado.
+
+    Exemplos:
+        >>> resultado = executar_comando_terminal(
+        ...     comando=['hostname'],
+        ...     nova_linha=True,
+        ... )
+        >>> resultado.returncode
+        0
+    """
     # Importa função de caminho atual no terminal
     from os import getcwd
     # Importa recursos do módulo Path
@@ -830,7 +1357,25 @@ def executar_comando_terminal(
 
 
 def extrair_texto_ocr(arquivo, linguagem, encoding='utf8'):
-    """Extrai texto de arquivo de imagem usando OCR."""
+    """Extrai texto de uma imagem por reconhecimento óptico de caracteres.
+
+    Parâmetros:
+        arquivo: Caminho da imagem a ser lida.
+        linguagem: Código do idioma do texto, no padrão do Tesseract
+            (ex.: 'por' para português, 'eng' para inglês).
+        encoding: Codificação usada para decodificar a saída do
+            Tesseract.
+
+    Retorna:
+        str: Texto reconhecido na imagem.
+
+    Exemplos:
+        >>> extrair_texto_ocr(
+        ...     arquivo='nota_fiscal.png',
+        ...     linguagem='por',
+        ... )
+        'NOTA FISCAL ELETRONICA\\nNumero: 000123\\n'
+    """
     # Importa recursos do módulo subprocess
     import subprocess
 
@@ -849,7 +1394,21 @@ def extrair_texto_ocr(arquivo, linguagem, encoding='utf8'):
 
 
 def finalizar_processo(pid: int):
-    """Coleta o idioma atual do sistema operacional."""
+    """Encerra à força o processo com o PID informado.
+
+    Parâmetros:
+        pid: Identificador numérico do processo a ser encerrado.
+
+    Retorna:
+        bool: `True` se o processo foi localizado e encerrado,
+            `False` se nenhum processo ativo possui aquele PID.
+
+    Exemplos:
+        >>> finalizar_processo(
+        ...     pid=10432,
+        ... )
+        True
+    """
     # Importa recursos do módulo os
     import psutil
 
@@ -892,7 +1451,29 @@ def gravar_log_em_arquivo(
     delimitador=';',
     nova_linha='\r\n',
 ):
-    """salva o conteúdo informado em um arquivo de texto também informado."""
+    """Grava uma linha de log em formato delimitado, no estilo CSV.
+
+    Parâmetros:
+        arquivo: Caminho do arquivo de log.
+        conteudo: Campos da linha, em lista ou tupla, na ordem em que
+            devem aparecer.
+        modo: Modo de abertura. Aceita `'a'` para acrescentar ao log
+            existente ou `'w'` para recriar o arquivo.
+        encoding: Codificação usada na gravação.
+        delimitador: Caractere que separa os campos.
+        nova_linha: Terminador acrescentado ao final. Aceita `'\r'`,
+            `'\n'` ou `'\r\n'`; outros valores não acrescentam nada.
+
+    Retorna:
+        None
+
+    Exemplos:
+        >>> gravar_log_em_arquivo(
+        ...     arquivo='exec.csv',
+        ...     conteudo=['2024-01-10', 'OK', 'lote 1'],
+        ...     modo='a',
+        ... )
+    """
 
     # transforma todos os argumentos em lista
     if (not isinstance(conteudo, list)) or (not isinstance(conteudo, tuple)):
@@ -912,7 +1493,28 @@ def gravar_log_em_arquivo(
 
 
 def janela_dialogo(titulo: str, texto: str, estilo: int = 1):
-    """Exibe uma janela de mensagem na tela."""
+    """Exibe uma caixa de mensagem do Windows e aguarda a resposta.
+
+    Parâmetros:
+        titulo: Texto exibido na barra de título da janela.
+        texto: Mensagem exibida no corpo da janela.
+        estilo: Código que define os botões exibidos. Aceita `0` para OK,
+            `1` para OK/Cancelar, `2` para Anular/Repetir/Ignorar, `3`
+            para Sim/Não/Cancelar, `4` para Sim/Não, `5` para
+            Repetir/Cancelar e `6` para Cancelar/Tentar novamente/Continuar.
+
+    Retorna:
+        int: Código do botão acionado (`1` OK, `2` Cancelar,
+            `6` Sim, `7` Não).
+
+    Exemplos:
+        >>> janela_dialogo(
+        ...     titulo='Atenção',
+        ...     texto='Deseja continuar?',
+        ...     estilo=4,
+        ... )
+        6
+    """
     # Importa recursos do módulo ctypes
     import ctypes
 
@@ -930,8 +1532,38 @@ def ler_variavel_ambiente(
     variavel_sistema: bool = False,
     encoding='utf8',
 ):
-    """Lê uma variável de ambiente,
-    tanto de um arquivo quanto direto do sistema."""
+    """Lê uma configuração de um arquivo `.ini` ou do ambiente do sistema.
+
+    Parâmetros:
+        arquivo_config: Caminho do arquivo `.ini`. Ignorado quando
+            `variavel_sistema` é `True`.
+        nome_bloco_config: Seção do arquivo `.ini` a ser lida, o nome
+            entre colchetes.
+        nome_variavel: Chave a ser lida. `None` devolve todas as
+            chaves do bloco.
+        variavel_sistema: Aceita `True` para ler a variável do sistema
+            operacional ou `False` para ler o arquivo de configuração.
+        encoding: Codificação usada na leitura do arquivo.
+
+    Retorna:
+        str | dict | None: O valor da chave; o bloco completo como
+            dicionário quando `nome_variavel` é `None`; ou `None`
+            quando a variável de sistema não existe.
+
+    Exceções:
+        KeyError: Quando o bloco ou a chave não existem no arquivo.
+
+    Exemplos:
+        >>> ler_variavel_ambiente(
+        ...     nome_variavel='usuario',
+        ... )
+        'admin'
+        >>> ler_variavel_ambiente(
+        ...     nome_variavel='TEMP',
+        ...     variavel_sistema=True,
+        ... )
+        'C:\\\\Users\\\\joao\\\\AppData\\\\Local\\\\Temp'
+    """
     # Importa recursos do módulo os
     import os
 
@@ -971,8 +1603,36 @@ def logar(
     formatacao=None,
     handlers=None,
 ):
-    """Formata e retorna uma string como log.
-    Será exibido sempre o ní­vel em primeira posição."""
+    """Registra uma mensagem de log no nível de severidade informado.
+
+    Parâmetros:
+        mensagem: Texto a ser registrado.
+        nivel: Severidade do registro. Aceita `DEBUG`, `INFO`,
+            `WARNING`, `ERROR` ou `CRITICAL`, sem diferenciar
+            maiúsculas de minúsculas.
+        arquivo: Caminho do arquivo de log. `None` escreve no
+            console.
+        modo: Modo de abertura do arquivo. Aceita `'a'` para acrescentar ou
+            `'w'` para recriar o arquivo.
+        encoding: Codificação do arquivo de log.
+        formatacao: Máscara de formatação da linha, no padrão do
+            `logging` (ex.: `'%(asctime)s %(message)s'`).
+        handlers: Lista de handlers customizados do `logging`, para
+            destinos além do arquivo e do console.
+
+    Retorna:
+        tuple[str, str] | str: Tupla com nível e mensagem registrados;
+            ou uma mensagem de erro em texto quando o nível informado é
+            inválido.
+
+    Exemplos:
+        >>> logar(
+        ...     mensagem='processo iniciado',
+        ...     nivel='INFO',
+        ...     arquivo='exec.log',
+        ... )
+        ('INFO', 'processo iniciado')
+    """
     # Importa recursos do módulo logging
     from logging import (
         CRITICAL,
@@ -1022,7 +1682,21 @@ def logar(
 
 
 def pasta_esta_vazia(caminho):
-    """Verifica se uma pasta no caminho informado está vazia."""
+    """Informa se uma pasta não contém nenhum arquivo ou subpasta.
+
+    Parâmetros:
+        caminho: Caminho da pasta a ser verificada.
+
+    Retorna:
+        bool: `True` se a pasta existe e está vazia, `False` caso
+            contenha algo ou não exista.
+
+    Exemplos:
+        >>> pasta_esta_vazia(
+        ...     caminho='entrada',
+        ... )
+        False
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -1045,7 +1719,21 @@ def pasta_esta_vazia(caminho):
 
 
 def processo_existente(nome_processo):
-    """Coleta o idioma atual do sistema operacional."""
+    """Informa se há algum processo em execução com o nome informado.
+
+    Parâmetros:
+        nome_processo: Trecho do nome do executável a procurar.
+
+    Retorna:
+        bool: `True` se ao menos um processo corresponde, `False`
+            caso contrário.
+
+    Exemplos:
+        >>> processo_existente(
+        ...     nome_processo='excel',
+        ... )
+        True
+    """
     # Importa recursos do módulo psutil
     import psutil
 
@@ -1070,8 +1758,25 @@ def processo_existente(nome_processo):
 
 
 def recortar(caminho_atual, caminho_novo):
-    """Recorta um arquivo ou pasta de um caminho
-    e cola em outro caminho conforme informado."""
+    """Move um arquivo ou pasta para outro local.
+
+    Parâmetros:
+        caminho_atual: Caminho atual do arquivo ou pasta.
+        caminho_novo: Caminho ou pasta de destino.
+
+    Retorna:
+        str: Caminho final do item já movido.
+
+    Exceções:
+        FileNotFoundError: Quando a origem não existe.
+
+    Exemplos:
+        >>> recortar(
+        ...     caminho_atual='entrada/base.xlsx',
+        ...     caminho_novo='processados',
+        ... )
+        'processados\\\\base.xlsx'
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
     from shutil import move
@@ -1092,7 +1797,23 @@ def remover_acentos(
     texto,
     normalizacao='NFKD',
 ):
-    """Cria pasta com caminho e nome informado."""
+    """Remove acentos e caracteres especiais de um texto.
+
+    Parâmetros:
+        texto: Texto a ser normalizado.
+        normalizacao: Forma de normalização Unicode. Aceita `NFC` e `NFD`
+            para equivalência canônica ou `NFKC` e `NFKD` para
+            equivalência de compatibilidade. `NFKD` é o padrão.
+
+    Retorna:
+        str: Texto contendo apenas caracteres ASCII.
+
+    Exemplos:
+        >>> remover_acentos(
+        ...     texto='João comeu açaí',
+        ... )
+        'Joao comeu acai'
+    """
     # Importa recursos do módulo unicodedata
     # Importa recursos do módulo re
     import re
@@ -1124,7 +1845,26 @@ def remover_acentos(
 
 
 def renomear(caminho, nome_atual, novo_nome):
-    """Renomeia o nome de um arquivo no caminho informado."""
+    """Altera o nome de um arquivo ou pasta dentro do mesmo diretório.
+
+    Parâmetros:
+        caminho: Pasta onde o item se encontra.
+        nome_atual: Nome atual do arquivo ou pasta, com extensão.
+        novo_nome: Novo nome a ser aplicado, com extensão.
+
+    Retorna:
+        None
+
+    Exceções:
+        FileNotFoundError: Quando o item de origem não existe.
+
+    Exemplos:
+        >>> renomear(
+        ...     caminho='saida',
+        ...     nome_atual='relatorio.pdf',
+        ...     novo_nome='relatorio_2024.pdf',
+        ... )
+    """
     # Importa recursos do módulo Path
     from os import rename
     from pathlib import Path
@@ -1143,8 +1883,25 @@ def renomear(caminho, nome_atual, novo_nome):
 
 
 def retornar_arquivos_em_pasta(caminho, filtro='**/*'):
-    """Retorna os arquivos existentes em um diretório se seus
-    respectivos sub-diretórios segundo o caminho informado."""
+    """Lista os caminhos dos arquivos e pastas contidos em um diretório.
+
+    Parâmetros:
+        caminho: Pasta a ser percorrida.
+        filtro: Máscara de busca no padrão `glob`. Aceita, entre outras,
+            `'**/*'` para incluir subpastas, `'*'` para limitar ao primeiro
+            nível ou `'*.ext'` para filtrar por uma extensão.
+
+    Retorna:
+        list[str]: Caminhos encontrados. Lista vazia quando nada
+            corresponde ao filtro.
+
+    Exemplos:
+        >>> retornar_arquivos_em_pasta(
+        ...     caminho='entrada',
+        ...     filtro='*.xlsx',
+        ... )
+        ['entrada\\\\base.xlsx', 'entrada\\\\clientes.xlsx']
+    """
     # Importa recursos do módulo Path
     from pathlib import Path
 
@@ -1165,8 +1922,21 @@ def retornar_arquivos_em_pasta(caminho, filtro='**/*'):
 
 
 def retornar_data_hora_atual(parametro):
-    """Formata e retorna dados de data e/ou hora,
-    conforme informado pelo parâmetro."""
+    """Devolve a data e a hora do momento, no formato informado.
+
+    Parâmetros:
+        parametro: Máscara de formatação (ex.: `'%d/%m/%Y'` para
+            data, `'%Y%m%d_%H%M%S'` para carimbo em nome de arquivo).
+
+    Retorna:
+        str: Data e hora atuais formatadas conforme a máscara.
+
+    Exemplos:
+        >>> retornar_data_hora_atual(
+        ...     parametro='%d/%m/%Y %H:%M',
+        ... )
+        '10/01/2024 14:35'
+    """
     # Importa recursos do módulo datetime
     import datetime
 
@@ -1177,6 +1947,28 @@ def retornar_data_hora_atual(parametro):
 def transformar_arquivo_em_base64(
     caminho_arquivo: str, encoding: str = 'utf8', erros: str = 'ignore'
 ):
+    """Converte um arquivo em uma string codificada em Base64.
+
+    Parâmetros:
+        caminho_arquivo: Caminho do arquivo a ser convertido.
+        encoding: Codificação usada para converter o resultado em
+            texto.
+        erros: Política para erros na conversão final. Aceita os handlers do
+            método `decode`, como `'strict'`, `'ignore'` e `'replace'`.
+
+    Retorna:
+        str: Conteúdo do arquivo codificado em Base64.
+
+    Exceções:
+        FileNotFoundError: Quando o arquivo não existe.
+
+    Exemplos:
+        >>> arquivo_base64 = transformar_arquivo_em_base64(
+        ...     caminho_arquivo='assinatura.png',
+        ... )
+        >>> arquivo_base64[:16]
+        'iVBORw0KGgoAAAAN'
+    """
     import base64
 
     with open(caminho_arquivo, mode='rb') as arquivo:
