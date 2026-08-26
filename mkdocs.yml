@@ -30,7 +30,6 @@ markdown_extensions:
 theme:
   name: material
   language: pt-BR
-  locale: pt_BR
 
   hljs_languages:
       - yaml
@@ -50,6 +49,7 @@ theme:
         name: Switch to dark mode
 
 nav:
+  - Início: index.md
   - Breve história: historia.md
   - Dependências do projeto: dependencias.md
   - Guia de automação web: guia_usuario/web_utils.md
