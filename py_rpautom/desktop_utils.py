@@ -52,9 +52,6 @@ def _aplicacao(estilo_aplicacao: str = 'win32') -> Application:
     Returns:
         Retorna o objeto do tipo Application manipulável.
 
-    Raises:
-        ...
-
     Examples:
         ...
     """
@@ -88,10 +85,6 @@ def _conectar_app(
 
     Returns:
         Retorna int, sendo o PID do processo manipulado.
-
-    Raises:
-        ...
-
 
     Examples:
         ...
@@ -213,9 +206,6 @@ def ativar_foco(nome_janela: str) -> bool:
         Retorna booleano, `True` caso o foco tenha sucesso, \
         `False` caso o foco não tenha sucesso.
 
-    Raises:
-        ...
-
     Examples:
         >>> ativar_foco(nome_janela='Untitled - Notepad')
         True
@@ -313,17 +303,17 @@ def capturar_imagem(caminho_campo: dict, coordenadas: tuple = None) -> bytes:
         ValueError: `coordenadas` precisa conter 4 posições.
 
     Examples:
-        >>> capturar_imagem(
-                caminho_campo=arvore_do_elemento,
-                coordenadas=(
-                    posicao_esquerda,
-                    posicao_cima,
-                    posicao_direita,
-                    posicao_baixo
-                )
-            )
-        b'%%&%%&%%&%%&%%&%%&%%&%%&%%&%Jq\xa1\xbc\xcc\xc7\xad\x81K%&%%
-        &%%&%%&%%&%%&%%&%%&%%&%%&%%&%:a\x7f\x8'
+        >>> imagem = capturar_imagem(
+        ...     caminho_campo=arvore_do_elemento,
+        ...     coordenadas=(
+        ...         posicao_esquerda,
+        ...         posicao_cima,
+        ...         posicao_direita,
+        ...         posicao_baixo,
+        ...     ),
+        ... )
+        >>> isinstance(imagem, bytes)
+        True
     """
 
     # Validar o tipo da varivavel
@@ -758,9 +748,6 @@ def conectar_app(
     Returns:
         Retorna int, sendo o PID do processo manipulado.
 
-    Raises:
-        ...
-
     Examples:
         >>> conectar_app(
         ...     pid=notepad_pid,
@@ -868,7 +855,6 @@ def encerrar_app(
 
     Raises:
         ValueError: `caminho_campo` precisa ser do tipo dict.
-        ...
 
 
     Examples:
@@ -907,9 +893,6 @@ def esta_com_foco(nome_janela: str) -> bool:
         Retorna booleano, `True` caso a janela estiver com foco, \
         `False` caso a janela não estiver com foco.
 
-    Raises:
-        ...
-
     Examples:
         #### Validação sem foco na janela no momento da execução do comando
         >>> esta_com_foco(
@@ -944,9 +927,6 @@ def esta_visivel(nome_janela: dict) -> str:
     Returns:
         Retorna uma string, sendo um dos valores a seguir: 'visivel', \
             'não visível', e 'não identificado'.
-
-    Raises:
-        ...
 
     Examples:
         #### Validação com a janela restaurada no momento da execução do comando
@@ -1058,18 +1038,21 @@ def iniciar_app(
     Returns:
         Retorna int, sendo o PID do processo manipulado.
 
-    Raises:
-        ...
-
     Examples:
-        >>> iniciar_app(
-        ...     executavel= 'C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2410.21.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe',
+        >>> executavel = (
+        ...     r'C:\\Program Files\\WindowsApps'
+        ...     r'\\Microsoft.WindowsNotepad_11.2410.21.0_x64__8wekyb3d8bbwe'
+        ...     r'\\Notepad\\Notepad.exe'
+        ... )
+        >>> pid = iniciar_app(
+        ...     executavel=executavel,
         ...     estilo_aplicacao='uia',
         ...     esperar=('ready', 10),
         ...     ocioso=False,
         ...     inverter=True,
         ... )
-        40944
+        >>> isinstance(pid, int)
+        True
     """
 
     # define app como global
@@ -1118,7 +1101,7 @@ def iniciar_app(
     return processo_app
 
 
-def janela_existente(pid, nome_janela) -> bool:
+def janela_existente(pid: int, nome_janela: str) -> bool:
     """Verifica se a janela de um objeto do tipo Application existe.
 
     Parameters:
@@ -1128,9 +1111,6 @@ def janela_existente(pid, nome_janela) -> bool:
     Returns:
         Retorna booleano, `True` caso a janela da aplicação exista, \
             `False` caso a janela da aplicação não exista.
-
-    Raises:
-        ...
 
     Examples:
         >>> janela_existente(
@@ -1199,7 +1179,7 @@ def localizar_diretorio_em_treeview(
 
 def localizar_elemento(
     caminho_campo: dict,
-    estilo_aplicacao='win32',
+    estilo_aplicacao: str = 'win32',
 ) -> bool:
     """Retorna se o caminho de elementos informado existe no objeto do \
         tipo Application sendo manipulado.
@@ -1264,7 +1244,7 @@ def maximizar_janela(caminho_janela: dict) -> bool:
         `False` caso a ação de maximizar não tenha sucesso.
 
     Raises:
-        `caminho_janela` precisa ser do tipo dict.
+        TypeError: `caminho_janela` precisa ser do tipo dict.
 
     Examples:
         >>> maximizar_janela(
@@ -1309,7 +1289,7 @@ def minimizar_janela(caminho_janela: dict) -> bool:
         `False` caso a ação de miniminizar não tenha sucesso.
 
     Raises:
-        `caminho_janela` precisa ser do tipo dict.
+        TypeError: `caminho_janela` precisa ser do tipo dict.
 
     Examples:
         >>> minimizar_janela(
@@ -1387,7 +1367,7 @@ def restaurar_janela(caminho_janela: dict) -> bool:
         `False` caso a ação de restaurar não tenha sucesso.
 
     Raises:
-        `caminho_janela` precisa ser do tipo dict.
+        TypeError: `caminho_janela` precisa ser do tipo dict.
 
     Examples:
         >>> restaurar_janela(
@@ -1422,7 +1402,7 @@ def restaurar_janela(caminho_janela: dict) -> bool:
 
 def retornar_janelas_disponiveis(
     pid: int,
-    estilo_aplicacao='win32',
+    estilo_aplicacao: str = 'win32',
 ) -> list[str]:
     """Retorna as janelas disponíveis em um objeto do tipo \
         Application manipulável.
@@ -1435,9 +1415,6 @@ def retornar_janelas_disponiveis(
     Returns:
         Retorna uma lista de strings, sendo o valor capturado do PID \
             informado.
-
-    Raises:
-        ...
 
     Examples:
         >>> retornar_janelas_disponiveis(
@@ -1493,7 +1470,6 @@ def selecionar_aba(caminho_campo: dict, item: Union[str, int]) -> bool:
     Raises:
         ValueError: `caminho_campo` precisa ser do tipo dict.
         ValueError: `item` precisa ser do tipo int ou str.
-        ...
 
     Examples:
         ...
@@ -1653,7 +1629,7 @@ def selecionar_menu(caminho_janela: dict, caminho_menu: str) -> bool:
             não tenha sucesso.
 
     Raises:
-        `caminho_janela` precisa ser do tipo dict.
+        TypeError: `caminho_janela` precisa ser do tipo dict.
 
     Raises:
         ValueError: `caminho_campo` precisa ser do tipo dict.
