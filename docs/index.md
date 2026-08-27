@@ -186,5 +186,5 @@ main()
 ## Continue explorando
 
 - [Automação web](guia_usuario/web_utils.md)
-- [Automação desktop](guia_usuario/python_utils.md)
-- [Utilitários em Python](guia_usuario/web_utils.md)
+- [Automação desktop](guia_usuario/desktop_utils.md)
+- [Utilitários em Python](guia_usuario/python_utils.md)
