@@ -52,8 +52,6 @@ def _aplicacao(estilo_aplicacao: str = 'win32') -> Application:
     Returns:
         Retorna o objeto do tipo Application manipulável.
 
-    Examples:
-        ...
     """
 
     # define app como global
@@ -86,8 +84,6 @@ def _conectar_app(
     Returns:
         Retorna int, sendo o PID do processo manipulado.
 
-    Examples:
-        ...
     """
 
     # define app como global
@@ -128,8 +124,6 @@ def _localizar_elemento(
     Raises:
         ValueError: `caminho_campo` precisa ser do tipo dict.
 
-    Examples:
-        ...
     """
 
     # importa app para o escopo da função
@@ -620,7 +614,7 @@ def coletar_dado_selecionado(caminho_campo: dict) -> str:
     return valor_capturado
 
 
-def coletar_dados_selecao(caminho_campo: dict) -> str:
+def coletar_dados_selecao(caminho_campo: dict) -> list[str]:
     """Coleta todas as opções disponíveis para seleção em um elemento de \
         seleção de um objeto do tipo Application.
 
@@ -629,13 +623,23 @@ def coletar_dados_selecao(caminho_campo: dict) -> str:
             sendo manipulada.
 
     Returns:
-        Retorna uma string, sendo o valor capturado do elemento informado.
+        Retorna uma lista de strings com as opções disponíveis no elemento.
 
     Raises:
         ValueError: `caminho_campo` precisa ser do tipo dict.
 
     Examples:
-        ...
+        >>> coletar_dados_selecao(
+        ...     caminho_campo={
+        ...         'window': {
+        ...             'title': 'Untitled - Notepad',
+        ...             'child_window': {
+        ...                 'control_type': 'ComboBox',
+        ...             },
+        ...         },
+        ...     },
+        ... )
+        ['Arial', 'Calibri', 'Consolas']
     """
 
     # define estático como falso para trabalhar com elemento dinâmico
@@ -647,7 +651,7 @@ def coletar_dados_selecao(caminho_campo: dict) -> str:
     app_interno.exists()
 
     # captura o texto do campo localizado
-    valor_capturado: str = app_interno.item_texts()
+    valor_capturado: list[str] = app_interno.item_texts()
 
     # retorna o valor capturado
     return valor_capturado
@@ -1154,7 +1158,15 @@ def localizar_diretorio_em_treeview(
         ValueError: `caminho_janela` precisa ser do tipo dict.
 
     Examples:
-        ...
+        >>> localizar_diretorio_em_treeview(
+        ...     caminho_janela={
+        ...         'window': {
+        ...             'title': 'Selecionar pasta',
+        ...         },
+        ...     },
+        ...     caminho_diretorio=r'Desktop\\Projeto',
+        ... )
+        True
     """
 
     try:
@@ -1472,7 +1484,18 @@ def selecionar_aba(caminho_campo: dict, item: Union[str, int]) -> bool:
         ValueError: `item` precisa ser do tipo int ou str.
 
     Examples:
-        ...
+        >>> selecionar_aba(
+        ...     caminho_campo={
+        ...         'window': {
+        ...             'title': 'Configurações',
+        ...             'child_window': {
+        ...                 'control_type': 'Tab',
+        ...             },
+        ...         },
+        ...     },
+        ...     item='Geral',
+        ... )
+        True
     """
 
     from pywinauto.controls.common_controls import TabControlWrapper
@@ -1527,7 +1550,18 @@ def selecionar_em_campo_lista(
         ValueError: `performar` precisa ser do tipo bool.
 
     Examples:
-        ...
+        >>> selecionar_em_campo_lista(
+        ...     caminho_campo={
+        ...         'window': {
+        ...             'title': 'Configurações',
+        ...             'child_window': {
+        ...                 'control_type': 'List',
+        ...             },
+        ...         },
+        ...     },
+        ...     item=1,
+        ... )
+        True
     """
 
     if isinstance(caminho_campo, dict) is False:
@@ -1629,16 +1663,18 @@ def selecionar_menu(caminho_janela: dict, caminho_menu: str) -> bool:
             não tenha sucesso.
 
     Raises:
-        TypeError: `caminho_janela` precisa ser do tipo dict.
-
-    Raises:
-        ValueError: `caminho_campo` precisa ser do tipo dict.
-        ValueError: `item` precisa ser do tipo int.
-        ValueError: `selecionar` precisa ser do tipo bool.
-        ValueError: `performar` precisa ser do tipo bool.
+        ValueError: `caminho_janela` precisa ser do tipo dict.
 
     Examples:
-        ...
+        >>> selecionar_menu(
+        ...     caminho_janela={
+        ...         'window': {
+        ...             'title': 'Untitled - Notepad',
+        ...         },
+        ...     },
+        ...     caminho_menu='Arquivo->Salvar como',
+        ... )
+        True
     """
 
     # importa app para o escopo da função
