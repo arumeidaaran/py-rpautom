@@ -24,10 +24,10 @@ setuptools.setup(
         'Framework :: Robot Framework :: Library',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 3',
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Topic :: Utilities',
     ],
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     install_requires=[
         'openpyxl',
         'psutil',
