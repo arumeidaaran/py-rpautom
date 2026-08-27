@@ -1,0 +1,37 @@
+/* Realce de sintaxe para a paleta clara. */
+[data-md-color-scheme="default"] {
+  --md-code-bg-color: #f6f8fa;
+  --md-code-fg-color: #24292f;
+  --md-code-hl-color: #fff8c5;
+  --md-code-hl-number-color: #0550ae;
+  --md-code-hl-special-color: #8250df;
+  --md-code-hl-function-color: #8250df;
+  --md-code-hl-constant-color: #0550ae;
+  --md-code-hl-keyword-color: #cf222e;
+  --md-code-hl-string-color: #0a3069;
+  --md-code-hl-name-color: #116329;
+  --md-code-hl-operator-color: #cf222e;
+  --md-code-hl-punctuation-color: #24292f;
+  --md-code-hl-comment-color: #6e7781;
+  --md-code-hl-generic-color: #953800;
+  --md-code-hl-variable-color: #953800;
+}
+
+/* Realce de sintaxe inspirado no One Dark Pro para a paleta escura. */
+[data-md-color-scheme="slate"] {
+  --md-code-bg-color: #282c34;
+  --md-code-fg-color: #abb2bf;
+  --md-code-hl-color: #3e4451;
+  --md-code-hl-number-color: #d19a66;
+  --md-code-hl-special-color: #e06c75;
+  --md-code-hl-function-color: #61afef;
+  --md-code-hl-constant-color: #d19a66;
+  --md-code-hl-keyword-color: #c678dd;
+  --md-code-hl-string-color: #98c379;
+  --md-code-hl-name-color: #e06c75;
+  --md-code-hl-operator-color: #56b6c2;
+  --md-code-hl-punctuation-color: #abb2bf;
+  --md-code-hl-comment-color: #8b949e;
+  --md-code-hl-generic-color: #e5c07b;
+  --md-code-hl-variable-color: #e06c75;
+}
