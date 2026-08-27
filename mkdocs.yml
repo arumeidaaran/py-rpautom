@@ -62,5 +62,5 @@ nav:
   - Guia de automação desktop: guia_usuario/desktop_utils.md
   - Guia de utilitários python: guia_usuario/python_utils.md
   - Sobre:
-    - Notas de Release: sobre/release-notes.md
+    - Notas de versão: sobre/notas-versao.md
     - Licença: sobre/license.md
