@@ -1,6 +1,6 @@
 site_name: Py-RPAutom
 dev_addr: localhost:9999
-repo_url: https://github.com/aranseiki/py-rpautom
+repo_url: https://github.com/arumeidaaran/py-rpautom
 repo_name: py-rpautom
 remote_branch: gh-pages
 remote_name: origin
